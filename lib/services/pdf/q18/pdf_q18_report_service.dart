@@ -96,6 +96,31 @@ class PdfQ18ReportService {
     PdfReportStyles.fontBold = fonts.bold;
     final assets = await _loadAssets();
 
+    // Chargement du QR Code du rapport Q18 (ou repli sur QR Code client si configuré)
+    pw.MemoryImage? q18QrImage;
+    final qrPathStr = (data.mission.qrCodeQ18 != null && data.mission.qrCodeQ18!.trim().isNotEmpty)
+        ? data.mission.qrCodeQ18!.trim()
+        : (data.mission.qrCodeClient != null && data.mission.qrCodeClient!.trim().isNotEmpty
+            ? data.mission.qrCodeClient!.trim()
+            : null);
+
+    if (qrPathStr != null) {
+      try {
+        final resolved = await AppImageUtils.resolvePathAsync(qrPathStr);
+        if (resolved != null) {
+          final f = File(resolved);
+          if (await f.exists()) {
+            final bytes = await f.readAsBytes();
+            if (bytes.isNotEmpty) {
+              q18QrImage = pw.MemoryImage(bytes);
+            }
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) print('Erreur chargement QR Code Q18: $e');
+      }
+    }
+
     // 4. Passe 1 : Calcul de la pagination exacte (Zero-Load sur les photos)
     onProgress?.call(0.50, 'Mise en page préliminaire (Passe 1)...');
     await Future.delayed(const Duration(milliseconds: 30));
@@ -108,6 +133,7 @@ class PdfQ18ReportService {
       trackedPages: trackedPages,
       photoImages: null,
       isPreflight: true,
+      q18QrImage: q18QrImage,
     );
     await pass1Doc.save();
     cancellationToken?.throwIfCancelled();
@@ -125,6 +151,7 @@ class PdfQ18ReportService {
       trackedPages: trackedPages,
       photoImages: compressedPhotoImages,
       isPreflight: false,
+      q18QrImage: q18QrImage,
     );
     final finalPdfBytes = await pass2Doc.save();
     cancellationToken?.throwIfCancelled();
@@ -320,6 +347,7 @@ class PdfQ18ReportService {
     Map<String, int>? trackedPages,
     Map<String, pw.MemoryImage>? photoImages,
     bool isPreflight = false,
+    pw.MemoryImage? q18QrImage,
   }) => _buildDocument(
     data: data,
     fonts: fonts,
@@ -328,6 +356,7 @@ class PdfQ18ReportService {
     trackedPages: trackedPages,
     photoImages: photoImages,
     isPreflight: isPreflight,
+    q18QrImage: q18QrImage,
   );
 
   static pw.Document _buildDocument({
@@ -338,6 +367,7 @@ class PdfQ18ReportService {
     Map<String, int>? trackedPages,
     Map<String, pw.MemoryImage>? photoImages,
     bool isPreflight = false,
+    pw.MemoryImage? q18QrImage,
   }) {
     // Configuration de la quatrième de couverture institutionnelle
     PdfFinalPageBuilder.fontRegular = fonts.regular;
@@ -364,6 +394,7 @@ class PdfQ18ReportService {
         build: (ctx) => _buildCoverPage(
           data: data,
           logoKesImage: assets.logoKes,
+          q18QrImage: q18QrImage,
           fontBold: fonts.bold,
           fontRegular: fonts.regular,
         ),
@@ -670,66 +701,164 @@ class PdfQ18ReportService {
   static pw.Widget _buildCoverPage({
     required Q18DataSnapshot data,
     required pw.MemoryImage? logoKesImage,
+    pw.MemoryImage? q18QrImage,
     required pw.Font fontBold,
     required pw.Font fontRegular,
   }) {
     final mission = data.mission;
     final rg = data.renseignements;
 
-    final clientName = mission.nomClient.trim().isNotEmpty
+    final nomClientStr = mission.nomClient.trim().isNotEmpty
         ? mission.nomClient.trim().toUpperCase()
         : 'CLIENT';
-    final siteName = (mission.nomSite != null && mission.nomSite!.trim().isNotEmpty)
-        ? mission.nomSite!.trim().toUpperCase()
-        : (rg != null && rg.nomSite.trim().isNotEmpty ? rg.nomSite.trim().toUpperCase() : clientName);
+
+    // Détermination dynamique du récepteur (civilité + fonction en MAJUSCULES au rendu)
+    final rawFonction = (mission.recepteurFonction ?? rg?.recepteurFonction ?? mission.effectiveRecepteurFonction).trim();
+    final rawNom = (mission.recepteurNom ?? rg?.recepteurNom ?? mission.effectiveRecepteurNom).trim();
+    final rawCivilite = (mission.recepteurCivilite ?? rg?.recepteurCivilite ?? mission.effectiveRecepteurCivilite ?? '').trim();
+    final bool hasRecepteur = rawFonction.isNotEmpty || rawNom.isNotEmpty;
+    final String? civiliteEffective = rawCivilite.isNotEmpty
+        ? rawCivilite
+        : (hasRecepteur ? 'Monsieur' : null);
+    final String attentionTitle = civiliteEffective != null
+        ? "A l'attention de $civiliteEffective"
+        : "A l'attention de Mme/M.";
+    final String fonctionAffichee = rawFonction.isNotEmpty
+        ? rawFonction.toUpperCase()
+        : (rawNom.isNotEmpty ? rawNom.toUpperCase() : 'XXXXXXXXXXXXXXX');
+
+    final nomSiteStr = (mission.nomSite ?? rg?.nomSite ?? '').trim().toUpperCase();
+    final lieuInterventionStr = (mission.lieuIntervention ?? rg?.lieuIntervention ?? (nomSiteStr.isNotEmpty ? nomSiteStr : '')).trim();
+
+    final dateDebut = rg?.dateDebut ?? mission.dateIntervention;
+    final dateFin = rg?.dateFin;
+    final bool hasDateRange = dateDebut != null &&
+        dateFin != null &&
+        (dateDebut.year != dateFin.year ||
+            dateDebut.month != dateFin.month ||
+            dateDebut.day != dateFin.day);
+    String dateIntervention;
+    if (hasDateRange) {
+      dateIntervention =
+          'Du\n${PdfReportStyles.formatDate(dateDebut)}\nAU\n${PdfReportStyles.formatDate(dateFin)}';
+    } else if (dateDebut != null) {
+      dateIntervention = PdfReportStyles.formatDate(dateDebut);
+    } else {
+      dateIntervention = '';
+    }
+
+    const double coverHeaderRowHeight = 24.0;
+    const double coverDataRowHeight = 46.0;
+    const double coverTableAndQrHeight = coverHeaderRowHeight + coverDataRowHeight; // 70.0 pt
+
+    // Résolution synchrone de repli pour le QR Code si non fourni en amont
+    pw.MemoryImage? clientQrMemoryImg = q18QrImage;
+    if (clientQrMemoryImg == null) {
+      final qrPath = (mission.qrCodeQ18 != null && mission.qrCodeQ18!.trim().isNotEmpty)
+          ? mission.qrCodeQ18!.trim()
+          : (mission.qrCodeClient != null && mission.qrCodeClient!.trim().isNotEmpty
+              ? mission.qrCodeClient!.trim()
+              : null);
+      if (qrPath != null) {
+        final qrFile = File(qrPath);
+        if (qrFile.existsSync()) {
+          try {
+            final qrBytes = qrFile.readAsBytesSync();
+            if (qrBytes.isNotEmpty) {
+              clientQrMemoryImg = pw.MemoryImage(qrBytes);
+            }
+          } catch (e) {
+            if (kDebugMode) print('Erreur chargement QR Code Q18: $e');
+          }
+        }
+      }
+    }
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        // ── En-tête supérieur : Logo KES (gauche) & Référence Q18 (droite) ──
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            if (logoKesImage != null)
-              pw.Image(
-                logoKesImage,
-                width: 170,
-                height: 62,
-                fit: pw.BoxFit.contain,
-              )
-            else
-              pw.Text(
-                'KES INSPECTIONS & PROJECTS',
-                style: pw.TextStyle(
-                  font: fontBold,
-                  fontSize: 12,
-                  color: PdfReportStyles.headerColor,
+        // ── En-tête supérieur : Logo KES (gauche) & Bloc Client (droite) ──
+        pw.Container(
+          height: 68,
+          child: pw.Stack(
+            overflow: pw.Overflow.visible,
+            children: [
+              pw.Positioned(
+                left: 0,
+                top: 0,
+                child: logoKesImage != null
+                    ? pw.Image(
+                        logoKesImage,
+                        width: 170,
+                        height: 62,
+                        fit: pw.BoxFit.contain,
+                      )
+                    : pw.Text(
+                        'KES INSPECTIONS AND PROJECTS',
+                        style: pw.TextStyle(
+                          font: fontBold,
+                          color: PdfReportStyles.headerColor,
+                          fontSize: 11,
+                        ),
+                      ),
+              ),
+              pw.Positioned(
+                right: 0,
+                top: 52,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  mainAxisSize: pw.MainAxisSize.min,
+                  children: [
+                    pw.Text(
+                      'CLIENT',
+                      style: pw.TextStyle(
+                        font: fontBold,
+                        fontSize: 12,
+                        color: PdfReportStyles.accentColor,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.ConstrainedBox(
+                      constraints: const pw.BoxConstraints(maxWidth: 190),
+                      child: pw.Text(
+                        nomClientStr,
+                        style: pw.TextStyle(
+                          font: fontBold,
+                          fontSize: 12,
+                          color: PdfReportStyles.accentColor,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
+                    pw.SizedBox(height: 12),
+                    pw.Text(
+                      attentionTitle,
+                      style: pw.TextStyle(
+                        font: fontBold,
+                        fontSize: 10.5,
+                        color: PdfReportStyles.accentColor,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.ConstrainedBox(
+                      constraints: const pw.BoxConstraints(maxWidth: 190),
+                      child: pw.Text(
+                        fonctionAffichee,
+                        style: pw.TextStyle(
+                          font: fontBold,
+                          fontSize: 10.5,
+                          color: PdfReportStyles.accentColor,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.end,
-              children: [
-                pw.Text(
-                  'COMPTE-RENDU Q18',
-                  style: pw.TextStyle(
-                    font: fontBold,
-                    fontSize: 10,
-                    color: PdfReportStyles.accentColor,
-                  ),
-                ),
-                pw.SizedBox(height: 2),
-                pw.Text(
-                  'N° : ${data.numeroRapportQ18}',
-                  style: pw.TextStyle(
-                    font: fontRegular,
-                    fontSize: 7.5,
-                    color: PdfReportStyles.darkGrey,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
 
         pw.Spacer(flex: 1),
@@ -781,44 +910,122 @@ class PdfQ18ReportService {
 
         pw.Spacer(flex: 1),
 
-        // ── Bloc inférieur : Tableau d'identification de l'établissement audité en bas juste en haut du pied de page ──
+        // ── Bloc inférieur : Tableau unifié intégrant les 5 colonnes et le QR Code (hauteur exacte 70pt) ──
         pw.Table(
           border: pw.TableBorder.all(color: PdfColors.black, width: 0.8),
           defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
           columnWidths: const {
-            0: pw.FlexColumnWidth(1.2),
-            1: pw.FlexColumnWidth(1.0),
-            2: pw.FlexColumnWidth(1.0),
+            0: pw.FixedColumnWidth(440),
+            1: pw.FixedColumnWidth(70),
           },
           children: [
-            // Ligne d'en-tête (en accentColor)
             pw.TableRow(
               children: [
-                _buildCoverTableHeaderCell('ÉTABLISSEMENT AUDITÉ', fontBold: fontBold),
-                _buildCoverTableHeaderCell('SITE', fontBold: fontBold),
-                _buildCoverTableHeaderCell('LOCALISATION', fontBold: fontBold),
-              ],
-            ),
-            // Ligne des données (en accentColor)
-            pw.TableRow(
-              children: [
-                _buildCoverTableDataCell(
-                  clientName,
-                  fontBold: fontBold,
-                  fontRegular: fontRegular,
-                  isBold: true,
+                // Colonne 0 : Tableau interne des 5 colonnes d'identification de la mission
+                pw.Table(
+                  border: const pw.TableBorder(
+                    verticalInside: pw.BorderSide(color: PdfColors.black, width: 0.8),
+                    horizontalInside: pw.BorderSide(color: PdfColors.black, width: 0.8),
+                  ),
+                  defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
+                  columnWidths: const {
+                    0: pw.FixedColumnWidth(106),
+                    1: pw.FixedColumnWidth(94),
+                    2: pw.FixedColumnWidth(70),
+                    3: pw.FixedColumnWidth(80),
+                    4: pw.FixedColumnWidth(90),
+                  },
+                  children: [
+                    // Ligne d'en-tête (PAS de couleur de fond, texte en accentColor)
+                    pw.TableRow(
+                      children: [
+                        _buildCoverTableHeaderCell('Nature de la mission', fontBold: fontBold, height: coverHeaderRowHeight),
+                        _buildCoverTableHeaderCell('N° du rapport', fontBold: fontBold, height: coverHeaderRowHeight),
+                        _buildCoverTableHeaderCell('Date du rapport', fontBold: fontBold, height: coverHeaderRowHeight),
+                        _buildCoverTableHeaderCell('Date d\'intervention', fontBold: fontBold, height: coverHeaderRowHeight),
+                        _buildCoverTableHeaderCell('Lieu d\'intervention', fontBold: fontBold, height: coverHeaderRowHeight),
+                      ],
+                    ),
+                    // Ligne des valeurs
+                    pw.TableRow(
+                      children: [
+                        _buildCoverTableDataCell(
+                          (() {
+                            final n = (mission.natureMission ?? rg?.verificationType ?? 'Vérification Périodique Réglementaire').trim();
+                            if (n.toUpperCase().contains('PERIODIQUE') || n.toUpperCase().contains('PÉRIODIQUE')) {
+                              return 'Vérification Périodique Réglementaire';
+                            }
+                            return n;
+                          })(),
+                          fontBold: fontBold,
+                          fontRegular: fontRegular,
+                          height: coverDataRowHeight,
+                        ),
+                        _buildCoverTableDataCell(
+                          data.numeroRapportQ18,
+                          fontBold: fontBold,
+                          fontRegular: fontRegular,
+                          height: coverDataRowHeight,
+                        ),
+                        _buildCoverTableDataCell(
+                          PdfReportStyles.formatDate(mission.dateRapport ?? DateTime.now()),
+                          fontBold: fontBold,
+                          fontRegular: fontRegular,
+                          height: coverDataRowHeight,
+                        ),
+                        _buildCoverTableDataCell(
+                          dateIntervention.isNotEmpty ? dateIntervention : '-',
+                          fontBold: fontBold,
+                          fontRegular: fontRegular,
+                          height: coverDataRowHeight,
+                          fontSize: hasDateRange ? 7.0 : 8.0,
+                        ),
+                        _buildCoverTableDataCell(
+                          lieuInterventionStr.isNotEmpty
+                              ? lieuInterventionStr
+                              : (data.lieuIntervention.isNotEmpty ? data.lieuIntervention : '-'),
+                          fontBold: fontBold,
+                          fontRegular: fontRegular,
+                          height: coverDataRowHeight,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                _buildCoverTableDataCell(
-                  siteName,
-                  fontBold: fontBold,
-                  fontRegular: fontRegular,
-                  isBold: true,
-                ),
-                _buildCoverTableDataCell(
-                  data.lieuIntervention.isNotEmpty ? data.lieuIntervention : siteName,
-                  fontBold: fontBold,
-                  fontRegular: fontRegular,
-                  isBold: false,
+                // Colonne 1 : Encadré QR Code KES carré (70x70) intégré nativement dans le tableau
+                pw.Container(
+                  height: coverTableAndQrHeight,
+                  padding: const pw.EdgeInsets.all(5),
+                  alignment: pw.Alignment.center,
+                  child: clientQrMemoryImg != null
+                      ? pw.Image(
+                          clientQrMemoryImg,
+                          width: 58,
+                          height: 58,
+                          fit: pw.BoxFit.contain,
+                        )
+                      : pw.Column(
+                          mainAxisAlignment: pw.MainAxisAlignment.center,
+                          children: [
+                            pw.Text(
+                              'QR CODE',
+                              style: pw.TextStyle(
+                                font: fontBold,
+                                fontSize: 7.5,
+                                color: PdfReportStyles.accentColor,
+                              ),
+                            ),
+                            pw.SizedBox(height: 2),
+                            pw.Text(
+                              'KES Verification',
+                              style: pw.TextStyle(
+                                font: fontRegular,
+                                fontSize: 6,
+                                color: PdfReportStyles.accentColor,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ],
             ),
@@ -836,13 +1043,13 @@ class PdfQ18ReportService {
   }) {
     return pw.Container(
       height: height,
-      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       alignment: pw.Alignment.center,
       child: pw.Text(
         text,
         style: pw.TextStyle(
           font: fontBold,
-          fontSize: 8.0,
+          fontSize: 7.5,
           color: PdfReportStyles.accentColor,
         ),
         textAlign: pw.TextAlign.center,
@@ -856,11 +1063,11 @@ class PdfQ18ReportService {
     required pw.Font fontRegular,
     bool isBold = false,
     double height = 46.0,
-    double fontSize = 8.5,
+    double fontSize = 8.0,
   }) {
     return pw.Container(
       height: height,
-      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       alignment: pw.Alignment.center,
       child: pw.Text(
         text,

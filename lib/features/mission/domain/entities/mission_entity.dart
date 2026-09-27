@@ -10,6 +10,7 @@ class MissionEntity {
   final String? adresseClient;
   final String? logoClient;
   final String? qrCodeClient;
+  final String? qrCodeQ18;
   final List<String>? accompagnateurs;
   final List<Map<String, dynamic>>? verificateurs;
   final String? dgResponsable;
@@ -66,6 +67,7 @@ class MissionEntity {
     this.adresseClient,
     this.logoClient,
     this.qrCodeClient,
+    this.qrCodeQ18,
     this.accompagnateurs,
     this.verificateurs,
     this.dgResponsable,

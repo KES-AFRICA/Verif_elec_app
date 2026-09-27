@@ -173,6 +173,9 @@ class Mission extends HiveObject {
   @HiveField(55, defaultValue: 'sans_objet')
   String? centralePhotovoltaique;
 
+  @HiveField(56)
+  String? qrCodeQ18;
+
   Mission({
     required this.id,
     required this.nomClient,
@@ -222,6 +225,7 @@ class Mission extends HiveObject {
     this.installation,
     this.perimetreMission,
     this.qrCodeClient,
+    this.qrCodeQ18,
     this.recepteurRapport,
     this.lieuIntervention,
     this.recepteurCivilite,
@@ -332,6 +336,7 @@ class Mission extends HiveObject {
       recepteurEmail: json['recepteur_email'] ?? json['recepteurEmail'],
       recepteurTelephone: json['recepteur_telephone'] ?? json['recepteurTelephone'],
       centralePhotovoltaique: json['centrale_photovoltaique'] ?? 'sans_objet',
+      qrCodeQ18: json['qr_code_q18'] ?? json['qrCodeQ18'],
     );
   }
 
@@ -392,6 +397,7 @@ class Mission extends HiveObject {
       'recepteur_email': recepteurEmail,
       'recepteur_telephone': recepteurTelephone,
       'centrale_photovoltaique': centralePhotovoltaique ?? 'sans_objet',
+      'qr_code_q18': qrCodeQ18,
     };
   }
 

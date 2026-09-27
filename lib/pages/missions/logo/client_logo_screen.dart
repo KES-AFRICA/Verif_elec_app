@@ -6,9 +6,9 @@ import 'package:inspec_app/models/mission.dart';
 import 'package:inspec_app/services/file_storage_service.dart';
 import 'package:inspec_app/services/hive_service.dart';
 
-enum AssetType { logo, qrCode }
+enum AssetType { logo, qrCode, qrCodeQ18 }
 
-/// Écran de gestion du Logo et du QR Code Client au niveau d'une Mission
+/// Écran de gestion du Logo et des QR Codes (Vérif. Élec & Rapport Q18) d'une Mission
 class ClientLogoScreen extends StatefulWidget {
   final Mission mission;
 
@@ -24,6 +24,7 @@ class ClientLogoScreen extends StatefulWidget {
 class _ClientLogoScreenState extends State<ClientLogoScreen> {
   File? _logoFile;
   File? _qrCodeFile;
+  File? _qrCodeQ18File;
   bool _isLoading = false;
   final ImagePicker _picker = ImagePicker();
 
@@ -48,14 +49,30 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
         _qrCodeFile = file;
       }
     }
+    if (widget.mission.qrCodeQ18 != null &&
+        widget.mission.qrCodeQ18!.isNotEmpty) {
+      final file = File(widget.mission.qrCodeQ18!);
+      if (file.existsSync()) {
+        _qrCodeQ18File = file;
+      }
+    }
     setState(() {});
   }
 
   /// BottomSheet de choix de la source d'image pour Logo ou QR Code
   void _showImageSourceDialog(AssetType assetType) {
-    final title = assetType == AssetType.logo
-        ? 'Importer un logo client'
-        : 'Importer un QR Code';
+    final String title;
+    switch (assetType) {
+      case AssetType.logo:
+        title = 'Importer un logo client';
+        break;
+      case AssetType.qrCode:
+        title = 'Importer un QR Code (Vérif. Électrique)';
+        break;
+      case AssetType.qrCodeQ18:
+        title = 'Importer un QR Code (Rapport Q18)';
+        break;
+    }
 
     showModalBottomSheet(
       context: context,
@@ -200,7 +217,7 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
             ),
           );
         }
-      } else {
+      } else if (assetType == AssetType.qrCode) {
         final savedFile = await FileStorageService.saveClientQrCode(
           widget.mission.id,
           sourceFile,
@@ -223,6 +240,29 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
             ),
           );
         }
+      } else if (assetType == AssetType.qrCodeQ18) {
+        final savedFile = await FileStorageService.saveQ18QrCode(
+          widget.mission.id,
+          sourceFile,
+        );
+        widget.mission.qrCodeQ18 = savedFile.path;
+        await widget.mission.save();
+        await HiveService.saveMission(widget.mission);
+
+        setState(() {
+          _qrCodeQ18File = savedFile;
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('QR Code du rapport Q18 mis à jour avec succès !'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -239,10 +279,16 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
 
   /// Suppression confirmée de l'asset
   Future<void> _confirmDeleteAsset(AssetType assetType) async {
-    final title = assetType == AssetType.logo ? 'Supprimer le logo ?' : 'Supprimer le QR Code ?';
+    final title = assetType == AssetType.logo
+        ? 'Supprimer le logo ?'
+        : (assetType == AssetType.qrCode
+            ? 'Supprimer le QR Code (Vérif. Élec) ?'
+            : 'Supprimer le QR Code Q18 ?');
     final message = assetType == AssetType.logo
         ? 'Voulez-vous vraiment supprimer le logo client associé à la mission "${widget.mission.nomClient}" ?'
-        : 'Voulez-vous vraiment supprimer le QR Code associé à la mission "${widget.mission.nomClient}" ?';
+        : (assetType == AssetType.qrCode
+            ? 'Voulez-vous vraiment supprimer le QR Code de vérification électrique associé à la mission "${widget.mission.nomClient}" ?'
+            : 'Voulez-vous vraiment supprimer le QR Code du rapport Q18 associé à la mission "${widget.mission.nomClient}" ?');
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -319,7 +365,7 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
             ),
           );
         }
-      } else {
+      } else if (assetType == AssetType.qrCode) {
         if (widget.mission.qrCodeClient != null) {
           await FileStorageService.deleteClientQrCode(widget.mission.qrCodeClient!);
         }
@@ -334,7 +380,28 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('QR Code supprimé'),
+              content: Text('QR Code de la mission supprimé'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else if (assetType == AssetType.qrCodeQ18) {
+        if (widget.mission.qrCodeQ18 != null) {
+          await FileStorageService.deleteQ18QrCode(widget.mission.qrCodeQ18!);
+        }
+        widget.mission.qrCodeQ18 = null;
+        await widget.mission.save();
+        await HiveService.saveMission(widget.mission);
+
+        setState(() {
+          _qrCodeQ18File = null;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('QR Code du rapport Q18 supprimé'),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 2),
             ),
@@ -446,8 +513,8 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
 
                   // 3. Section QR Code Client / Mission
                   _buildSectionHeader(
-                    title: '2. QR Code du Client / de la Mission',
-                    subtitle: 'Code de traçabilité intégré en bas de la page de garde',
+                    title: '2. QR Code Vérification Électrique (Rapport Général)',
+                    subtitle: 'Code de traçabilité intégré en bas de la page de garde du rapport de vérification',
                     icon: Icons.qr_code_2_rounded,
                     iconColor: Colors.teal.shade700,
                   ),
@@ -456,6 +523,21 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
                     _buildEmptyCard(AssetType.qrCode)
                   else
                     _buildAssetCard(_qrCodeFile!, AssetType.qrCode),
+
+                  const SizedBox(height: 32),
+
+                  // 4. Section QR Code Rapport Q18
+                  _buildSectionHeader(
+                    title: '3. QR Code du Rapport Q18 (APSAD D18)',
+                    subtitle: 'Code de traçabilité officiel intégré dans le tableau de la page de garde du rapport Q18',
+                    icon: Icons.qr_code_rounded,
+                    iconColor: Colors.deepOrange.shade700,
+                  ),
+                  const SizedBox(height: 12),
+                  if (_qrCodeQ18File == null)
+                    _buildEmptyCard(AssetType.qrCodeQ18)
+                  else
+                    _buildAssetCard(_qrCodeQ18File!, AssetType.qrCodeQ18),
 
                   const SizedBox(height: 24),
                 ],
@@ -568,13 +650,27 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
 
   /// Carte d'affichage d'état vide
   Widget _buildEmptyCard(AssetType assetType) {
-    final label = assetType == AssetType.logo ? 'Ajouter un logo' : 'Ajouter un QR Code';
-    final desc = assetType == AssetType.logo
-        ? 'Aucun logo client importé pour le moment'
-        : 'Aucun QR Code importé pour le moment';
-    final icon = assetType == AssetType.logo
-        ? Icons.add_photo_alternate_rounded
-        : Icons.qr_code_scanner_rounded;
+    final String label;
+    final String desc;
+    final IconData icon;
+
+    switch (assetType) {
+      case AssetType.logo:
+        label = 'Ajouter un logo';
+        desc = 'Aucun logo client importé pour le moment';
+        icon = Icons.add_photo_alternate_rounded;
+        break;
+      case AssetType.qrCode:
+        label = 'Ajouter un QR Code';
+        desc = 'Aucun QR Code Vérif. Élec importé pour le moment';
+        icon = Icons.qr_code_scanner_rounded;
+        break;
+      case AssetType.qrCodeQ18:
+        label = 'Ajouter le QR Code Q18';
+        desc = 'Aucun QR Code Rapport Q18 importé pour cette mission';
+        icon = Icons.qr_code_rounded;
+        break;
+    }
 
     return Container(
       width: double.infinity,
@@ -640,7 +736,18 @@ class _ClientLogoScreenState extends State<ClientLogoScreen> {
 
   /// Carte d'affichage d'un asset configuré (Logo ou QR Code)
   Widget _buildAssetCard(File file, AssetType assetType) {
-    final title = assetType == AssetType.logo ? 'Logo Client' : 'QR Code Mission';
+    final String title;
+    switch (assetType) {
+      case AssetType.logo:
+        title = 'Logo Client';
+        break;
+      case AssetType.qrCode:
+        title = 'QR Code Vérif. Électrique';
+        break;
+      case AssetType.qrCodeQ18:
+        title = 'QR Code Rapport Q18';
+        break;
+    }
 
     return Container(
       decoration: BoxDecoration(

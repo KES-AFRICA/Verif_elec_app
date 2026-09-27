@@ -1031,6 +1031,73 @@ void main() {
       // Structure et nombre d'éléments identiques entre Preflight et Rendu final
       expect(renderWidgets.length, equals(preflightWidgets.length));
     });
+
+    test('19. Page de garde Q18 unifiée avec Verif Elec (en-tête client, tableau 5 colonnes, N° Q18 et QR Code)', () async {
+      final missionWithQr = Mission(
+        id: 'test_q18_cover',
+        nomClient: 'CIMENCAM S.A.',
+        recepteurCivilite: 'Monsieur',
+        recepteurNom: 'Marc DUBOIS',
+        recepteurFonction: 'Directeur d\'Usine',
+        qrCodeQ18: 'path/to/qrcode_q18.png',
+        qrCodeClient: 'path/to/qrcode_client.png',
+        status: 'en_cours',
+        createdAt: DateTime(2026, 3, 1),
+        updatedAt: DateTime(2026, 3, 1),
+      );
+
+      final snapshot = Q18DataSnapshot(
+        mission: missionWithQr,
+        numeroRapportQ18: 'KES/IP/Q18/2026/042',
+        numeroRapportVerifElec: 'KES/IP/VE/2026/042',
+        dateRapportEffective: DateTime(2026, 3, 15),
+        dateProchaineVisite: DateTime(2027, 3, 14),
+        lieuIntervention: 'Douala - Bonabéri',
+        quantities: sampleSnapshot.quantities,
+        perimetreCouverts: sampleSnapshot.perimetreCouverts,
+        exclusionsPerimetre: const [],
+        documentsConsultes: sampleSnapshot.documentsConsultes,
+        dangers: const [],
+        countDangerAvere: 0,
+        countDegradation: 0,
+        countHorsPerimetre: 0,
+        countPointSensible: 0,
+        hasDangerAvere: false,
+        appreciationGlobale: 'Satisfaisant',
+        avisSyntheseText: '',
+        photoEntries: const [],
+      );
+
+      final fonts = (
+        regular: pw.Font.helvetica(),
+        bold: pw.Font.helveticaBold(),
+      );
+      final assets = (
+        logoKes: null as pw.MemoryImage?,
+        watermark: null as pw.MemoryImage?,
+        watermarkWhite: null as pw.MemoryImage?,
+      );
+
+      final trackedPages = <String, int>{};
+      final doc = PdfQ18ReportService.buildDocumentForTesting(
+        data: snapshot,
+        fonts: fonts,
+        assets: assets,
+        overrideTotalPages: 5,
+        trackedPages: trackedPages,
+      );
+
+      final bytes = await doc.save();
+      expect(bytes.isNotEmpty, isTrue);
+      expect(bytes.length, greaterThan(2000));
+
+      // Vérifier le support du champ qrCodeQ18 sur Mission
+      expect(missionWithQr.qrCodeQ18, equals('path/to/qrcode_q18.png'));
+      final json = missionWithQr.toJson();
+      expect(json['qr_code_q18'], equals('path/to/qrcode_q18.png'));
+      final rehydrated = Mission.fromJson(json);
+      expect(rehydrated.qrCodeQ18, equals('path/to/qrcode_q18.png'));
+    });
   });
 }
 

@@ -164,4 +164,49 @@ class FileStorageService {
       if (kDebugMode) print('Erreur suppression QR Code client: $e');
     }
   }
+
+  /// Sauvegarder le QR Code du rapport Q18 (APSAD D18)
+  static Future<File> saveQ18QrCode(String missionId, File sourceFile) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final qrDir = Directory('${appDir.path}/q18_qrcodes');
+    if (!await qrDir.exists()) {
+      await qrDir.create(recursive: true);
+    }
+
+    // Nettoyer les anciens QR codes Q18 enregistrés pour cette mission
+    try {
+      if (await qrDir.exists()) {
+        final existingFiles = qrDir.listSync();
+        for (final f in existingFiles) {
+          if (f is File && f.path.contains('qrcode_q18_$missionId')) {
+            await f.delete();
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Nettoyage ancien QR Code Q18: $e');
+    }
+
+    final ext = sourceFile.path.contains('.')
+        ? sourceFile.path.split('.').last
+        : 'png';
+    final destinationFile = File(
+        '${qrDir.path}/qrcode_q18_${missionId}_${DateTime.now().millisecondsSinceEpoch}.$ext');
+
+    await sourceFile.copy(destinationFile.path);
+    if (kDebugMode) print('✅ QR Code Q18 sauvegardé: ${destinationFile.path}');
+    return destinationFile;
+  }
+
+  /// Supprimer le QR Code Q18
+  static Future<void> deleteQ18QrCode(String qrCodePath) async {
+    try {
+      final file = File(qrCodePath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (e) {
+      if (kDebugMode) print('Erreur suppression QR Code Q18: $e');
+    }
+  }
 }

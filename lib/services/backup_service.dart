@@ -704,6 +704,9 @@ class BackupService {
     if (m.qrCodeClient != null && m.qrCodeClient!.trim().isNotEmpty) {
       allCollectedPhotos.add(m.qrCodeClient!.trim());
     }
+    if (m.qrCodeQ18 != null && m.qrCodeQ18!.trim().isNotEmpty) {
+      allCollectedPhotos.add(m.qrCodeQ18!.trim());
+    }
     if (audit != null) {
       allCollectedPhotos.addAll(_collectAllPhotoPaths(audit));
     }
@@ -3881,6 +3884,9 @@ class BackupService {
         }
         if (mission.qrCodeClient != null && mission.qrCodeClient!.trim().isNotEmpty) {
           allPhotoPaths.add(mission.qrCodeClient!.trim());
+        }
+        if (mission.qrCodeQ18 != null && mission.qrCodeQ18!.trim().isNotEmpty) {
+          allPhotoPaths.add(mission.qrCodeQ18!.trim());
         }
       }
 
