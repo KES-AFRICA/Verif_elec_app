@@ -2,7 +2,7 @@
 
 > **Projet** : KES Inspection App (`inspec_app`)  
 > **Organisation** : Kamer Engineering Solutions (KES Inspections & Projects)  
-> **Dernière révision** : 24 Septembre 2026  
+> **Dernière révision** : 27 Septembre 2026  
 > **Rôle du document** : Point d'entrée unique de chargement rapide pour tout agent intervenant sur le projet. Ce document synthétise l'état actuel de l'application, les commandements inviolables et oriente vers les 6 piliers documentaires détaillés dans `docs/project-memory/`.
 
 ---
@@ -23,16 +23,16 @@
 | Axe | État Réel Validé |
 |---|---|
 | **Framework & Langage** | Flutter (Canal Stable), Dart SDK `^3.9.2`. Respect strict de `flutter_lints ^5.0.0`. |
-| **Persistance Locale** | Hive `^2.2.3` & `hive_flutter ^1.1.0`. **18 boîtes Hive actives**, **45+ TypeAdapters enregistrés**. Migrations silencieuses idempotentes au démarrage. |
+| **Persistance Locale** | Hive `^2.2.3` & `hive_flutter ^1.1.0`. **18 boîtes Hive actives**, **45+ TypeAdapters enregistrés**. Modèle `Mission` étendu jusqu'à `@HiveField(56)` (`centralePhotovoltaique`, `qrCodeQ18`, récepteurs normalisés). Migrations silencieuses idempotentes au démarrage. |
 | **State Management & DI** | Flutter Riverpod `^2.5.1` (`StateNotifierProvider.family`, `AsyncValue`, `ref.watch`). Injection de dépendances via GetIt `^8.0.3` (`injection_container.dart`). |
 | **Architecture** | Clean Architecture modulaire Feature-First (`lib/features/` : Auth, Mission, Audit, Description, Foudre, Mesures, JSA, Backup). |
-| **Moteur PDF (V3)** | Moteur micro-lots 2-passes avec pre-flight réel du sommaire, 13 builders spécialisés, pagination absolue `Page X / N` et fusion binaire `PdfMergerService`. Résolution des problèmes OOM sur 100+ pages. |
+| **Moteur PDF (V3 & Q18 V1)** | Architecture micro-lots 2-passes :<br>• **Vérification Électrique** : 13 builders spécialisés, pagination absolue `Page X / N`, pre-flight réel du sommaire.<br>• **Q18 APSAD D18 (V1)** : 7 builders modulaires couvrant 16 sections normatives, **Preflight Zero-Load** pour les photos thermographiques, compression adaptative d'images (<4 Mo au lieu de 18 Mo).<br>• **Couverture unifiée** : [PdfCoverBuilder.resolveRecepteurInfo](file:///c:/Users/TeufackAndelson/OneDrive%20-%20Kamer%20Engineering%20Solutions/Documents/Projets%20KES/inspection_app/lib/services/pdf/builders/pdf_cover_builder.dart) harmonise le récepteur (civilité, nom, fonction en majuscules) et supporte les QR codes dédiés (`qrCodeClient`, `qrCodeQ18`). |
 | **Moteur Excel** | Syncfusion XlsIO `^33.2.13`. 2 feuilles normalisées (*« Annexe des équipements »* et *« Annexe des observations »*) réutilisant la logique et les métriques du PDF. |
 | **Moteur Word** | `docs_gee ^1.0.1`. Structure miroir du rapport technique. |
 | **Import / Export** | Format signé SHA-256 V4 (`INSPEC_BACKUP_V4`), rétrocompatible V1/V2/V3. Export unitaire ou global, archive ZIP, synchronisation cloud d'arrière-plan `BackupQueueService` vers Microsoft 365. |
 | **Statistiques Métier** | 16 moteurs déterministes dans `lib/services/statistics/` (Pareto, 10 catégories de défauts, 5 familles de risques, isolation stricte MT vs BT). |
-| **Tests & Régression** | **140+ suites de tests automatisés** dans `test/features/` et `test/services/` simulant des missions industrielles réelles de production (Cimencam, Camrail, Guinness). |
-| **Chantier Actif & Dette** | Stabilité globale atteinte. Dette modérée : migration progressive des derniers formulaires secondaires vers Riverpod et consolidation modulaire du Word. |
+| **Tests & Régression** | **160+ suites de tests automatisés** dans `test/features/` et `test/services/` simulant des missions industrielles réelles de production (Cimencam, Camrail, Guinness, Q18 complet). |
+| **Chantier Actif & Dette** | **V1 finalisée et hautement stable**. Dette modérée : consolidation continue de la structure Word sur le pattern des builders PDF. |
 
 ---
 
@@ -54,8 +54,9 @@ Toute intervention sur le projet **doit impérativement respecter ces 10 command
    La pagination PDF repose sur la Passe 1 de pre-flight qui compile réellement le sommaire en mémoire. Ne jamais deviner arbitrairement son nombre de pages.
 7. **FOOTER PDF : USAGE STRICT D'OVERRIDE TOTAL PAGES** :  
    Dans les footers de chunks PDF, ne jamais utiliser `ctx.pagesCount` (compteur local du tronçon). Toujours utiliser `(ctx.pageNumber + pageOffset) / $overrideTotalPages`.
-8. **ACCORD GRAMMATICAL RIGOREUX DES SOURCES** :  
-   Toute mention de source dans l'UI, le PDF ou l'Excel doit être accordée au féminin : **`Identifiée`** ou **`Non identifiée`**.
+8. **ACCORD GRAMMATICAL & RÉSOLUTION HARMONISÉE DU RÉCEPTEUR** :  
+   - Toute mention de source dans l'UI, le PDF ou l'Excel doit être accordée au féminin : **`Identifiée`** ou **`Non identifiée`**.  
+   - Tout affichage de récepteur sur une couverture de rapport officiel doit passer par [PdfCoverBuilder.resolveRecepteurInfo](file:///c:/Users/TeufackAndelson/OneDrive%20-%20Kamer%20Engineering%20Solutions/Documents/Projets%20KES/inspection_app/lib/services/pdf/builders/pdf_cover_builder.dart) pour garantir l'harmonisation visuelle et le fallback résilient sans duplication de civilité.
 9. **INTÉGRITÉ SHA-256 ET ARCHIVAGE ZIP** :  
    Toute modification du format de sauvegarde doit préserver la rétrocompatibilité d'importation des versions antérieures (V1, V2, V3) et vérifier la somme de contrôle SHA-256.
 10. **RÈGLES ABSOLUES GIT & SÉCURITÉ** :  

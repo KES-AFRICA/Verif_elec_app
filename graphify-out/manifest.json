@@ -2616,9 +2616,9 @@
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {
-    "mtime": 1790264245.6985195,
-    "seen": 1790325458.6309793,
-    "ast_hash": "b387747420545c8dbb1d868efc92337e",
+    "mtime": 1790507862.5557132,
+    "seen": 1790508174.429035,
+    "ast_hash": "1e0dc8f1c08e8a85fb08b8d5d12f0b73",
     "semantic_hash": ""
   },
   ".agents/rules/crossplatformrule.md": {
@@ -3900,9 +3900,9 @@
     "semantic_hash": ""
   },
   "docs/project-memory/verify_project_memory.dart": {
-    "mtime": 1790264533.6622043,
-    "seen": 1790325458.6301706,
-    "ast_hash": "8ae782ccad84a26dff40ef43114da1ce",
+    "mtime": 1790507398.4569087,
+    "seen": 1790508174.4281785,
+    "ast_hash": "be38988ab4f6228d34c3c8d85ec07fce",
     "semantic_hash": ""
   },
   "lib/services/local_type_transition_service.dart": {
@@ -3972,9 +3972,9 @@
     "semantic_hash": ""
   },
   "PROJECT_MEMORY.md": {
-    "mtime": 1790264162.019266,
-    "seen": 1790325458.6309984,
-    "ast_hash": "641b7b1d3351d65ec677708ab5737f74",
+    "mtime": 1790507584.9521616,
+    "seen": 1790508174.4290588,
+    "ast_hash": "a578f158d2cd7baeba8eb697a7bb6c85",
     "semantic_hash": ""
   },
   "docs/project-memory/00_INDEX.md": {
@@ -3990,21 +3990,21 @@
     "semantic_hash": ""
   },
   "docs/project-memory/02_DOMAIN_AND_DATA_MODEL.md": {
-    "mtime": 1790264187.3027575,
-    "seen": 1790325458.6310055,
-    "ast_hash": "4015b0a00105ba5d3dc55507bd2fd9ae",
+    "mtime": 1790507431.865225,
+    "seen": 1790508174.4290707,
+    "ast_hash": "16ec5abc83bf9663df105fca0c25f01e",
     "semantic_hash": ""
   },
   "docs/project-memory/03_PERSISTENCE_AND_MIGRATIONS.md": {
-    "mtime": 1790264200.5102127,
-    "seen": 1790325458.6310067,
-    "ast_hash": "935ef9114726fdb65f981c979a61361d",
+    "mtime": 1790507485.9201927,
+    "seen": 1790508174.4290726,
+    "ast_hash": "bc24c0b1976b1a9054d9a14c6b6b6006",
     "semantic_hash": ""
   },
   "docs/project-memory/04_REPORTING_AND_STATISTICS.md": {
-    "mtime": 1790264210.3789163,
-    "seen": 1790325458.631008,
-    "ast_hash": "b47b9420d461dadc75905c8a9e5b4dc0",
+    "mtime": 1790506930.8110063,
+    "seen": 1790508174.4290738,
+    "ast_hash": "9803f0d1668f4258799a5bb70c212bf7",
     "semantic_hash": ""
   },
   "docs/project-memory/05_BACKUP_IMPORT_EXPORT_MEDIA.md": {
@@ -4014,9 +4014,9 @@
     "semantic_hash": ""
   },
   "docs/project-memory/06_ADR_AND_FORENSIC_REGISTER.md": {
-    "mtime": 1790264232.9730458,
-    "seen": 1790325458.6310103,
-    "ast_hash": "a6b28e84edfdb792c89a4bb46981d5ab",
+    "mtime": 1790507561.0898578,
+    "seen": 1790508174.429077,
+    "ast_hash": "7f3b6aca057450ce8065f38143de67e8",
     "semantic_hash": ""
   },
   "docs/project-memory/07_UI_UX_FORMS.md": {

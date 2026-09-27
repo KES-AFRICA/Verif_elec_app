@@ -1,8 +1,8 @@
 # 04_REPORTING_AND_STATISTICS.md — Reporting Multi-Format & Moteurs Statistiques
 
 > **Module** : KES Inspection App — Pilier 4  
-> **Dernière révision** : 24 Septembre 2026  
-> **Source de vérité** : `lib/services/pdf/`, `lib/services/excel/`, `lib/services/word_report_service.dart`, `lib/services/statistics/`
+> **Dernière révision** : 27 Septembre 2026  
+> **Source de vérité** : `lib/services/pdf/`, `lib/services/pdf/q18/`, `lib/services/excel/`, `lib/services/word_report_service.dart`, `lib/services/statistics/`
 
 ---
 
@@ -31,7 +31,7 @@ Pour éliminer définitivement les crashs mémoire (Out-Of-Memory) lors de l'éd
 ```
 
 ### Registre des 13 Builders Spécialisés (`lib/services/pdf/builders/`)
-1. **`PdfCoverBuilder`** : Page de garde officielle KES, intervenants, client, site, date de mission.
+1. **`PdfCoverBuilder`** : Page de garde officielle KES, intervenants, client, site, date de mission. Intègre `resolveRecepteurInfo` pour la résolution dynamique centralisée.
 2. **`PdfSommaireBuilder`** : Sommaire dynamique multi-pages synchronisé avec la table `trackedPages`.
 3. **`PdfRegulatoryBuilder`** : Cadre réglementaire, textes de lois, appareils de mesures étalonnés.
 4. **`PdfExecutiveSummaryBuilder`** : Synthèse exécutive, criticité globale du site, facteurs clés.
@@ -45,6 +45,39 @@ Pour éliminer définitivement les crashs mémoire (Out-Of-Memory) lors de l'éd
 12. **`PdfMesuresEssaisBuilder`** : Tableaux paysage des mesures physiques (Terre, continuités, isolement, DDR).
 13. **`PdfPhotosSchemasBuilder`** : Planches de photos probantes et schémas unifilaires.
 14. **`PdfFinalPageBuilder`** : Page de clôture, signatures, cachets et coordonnées KES.
+
+---
+
+## 2. MOTEUR DU RAPPORT RÉGLEMENTAIRE Q18 (APSAD D18 V1)
+
+Fichier orchestrateur : [lib/services/pdf/q18/pdf_q18_report_service.dart](file:///c:/Users/TeufackAndelson/OneDrive%20-%20Kamer%20Engineering%20Solutions/Documents/Projets%20KES/inspection_app/lib/services/pdf/q18/pdf_q18_report_service.dart)  
+Emplacement : `lib/services/pdf/q18/`
+
+Le rapport Q18 atteste de la conformité des installations au regard du risque d'incendie et d'explosion selon le Traité de prévention des risques **APSAD D18**.
+
+### Architecture & Pipeline d'Exécution
+1. **Collecte & Snapshot Certifié (`Q18DataCollector`)** :  
+   Produit un objet immuable `Q18DataSnapshot` agrégeant les données de Mission, Audit, Description, Mesures et Renseignements Généraux.
+2. **Classification Déterministe des Dangers (`_mapFindingToQ18Level`)** :  
+   - `Danger avéré` : Anomalies critiques ou risques avérés d'échauffement / incendie / défaut d'isolement.
+   - `Dégradation` : Anomalies modérées à surveiller.
+   - `Hors périmètre` : Non-conformités réglementaires hors scope direct incendie D18.
+   - `Point sensible` : Recommandations d'exploitation et maintenance.
+3. **Les 7 Builders Spécialisés Q18 (`lib/services/pdf/q18/builders/`)** :  
+   - `Q18IdentificationBuilder` : Section 1 (Identification de la mission, 10 rubriques) et Section 4 (Présentation du site & installations : 4.1 alimentation/postes, 4.2 inventaire des armoires).
+   - `Q18RegulatoryBuilder` : Section 2 (Objet et cadre), Section 3 (Cadre réglementaire & 8 textes), Section 7 (Méthodologie & 9 points de vérification), Section 8 (Classification des dangers), Section 9 (Typologie des dangers & 9 familles).
+   - `Q18PerimetreBuilder` : Section 5 (Périmètre & limites de la mission, 4 colonnes), Section 6 (Documents consultés & 6 pièces justificatives dont rapport Q18 précédent).
+   - `Q18DangersSynthesisBuilder` : Section 10 (Synthèse hiérarchique 4-niveaux Zone -> Local -> Équipement -> Constats), Section 11 (Récapitulatif statistique 3 colonnes).
+   - `Q18ConclusionBuilder` : Section 12 (Avis global & conditions exclusives Cas n°1 vs Cas n°2), Section 13 (Conditions de levée), Section 14 (Prochaine échéance), Section 15 (Visa & signature avec gestion singulier/pluriel et "Fait à [Lieu]").
+   - `Q18PhotosBuilder` : Section 16 (Planche photographique avec badges de niveau D18).
+4. **Stratégie Haute Performance Anti-OOM (Preflight Zero-Load & Compression)** :  
+   - **Passe Preflight** : Les widgets de la planche photos sont mesurés avec `isPreflight: true` sans charger aucune image en mémoire (Zero-Load), garantissant une réactivité immédiate du dialogue et prévenant les OOM.
+   - **Compression Adaptative Préliminaire** : `_prepareCompressedPhotos` compresse toutes les photos par lots hors du thread UI avant la Passe 2. La taille finale du PDF est ainsi divisée par 4 ou plus (ex: de 18 Mo à moins de 4 Mo pour 47 pages).
+5. **Page de Garde Unifiée avec Verif Elec** :  
+   - En-tête supérieur droit : `CLIENT`, Nom client en majuscules, `A l'attention de [Civilité]`, `[FONCTION EN MAJUSCULES]`.
+   - Résolution partagée via `PdfCoverBuilder.resolveRecepteurInfo(mission: mission, rg: rg)` avec support de la saisie libre, extraction des préfixes (`M.`, `Monsieur`, `Mme`, `Madame`) et repli automatique.
+   - Tableau inférieur 5 colonnes identique avec affichage du **Numéro de rapport Q18** (`data.numeroRapportQ18`).
+   - Encart QR Code 70x70 pt avec rendu prioritaire de `mission.qrCodeQ18`.
 
 ---
 

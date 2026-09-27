@@ -1,7 +1,7 @@
 # 03_PERSISTENCE_AND_MIGRATIONS.md — Persistance Locale & Migrations Hive
 
 > **Module** : KES Inspection App — Pilier 3  
-> **Dernière révision** : 24 Septembre 2026  
+> **Dernière révision** : 27 Septembre 2026  
 > **Source de vérité** : `lib/services/hive_service.dart`, `lib/models/*.g.dart`, `lib/services/trash_service.dart`
 
 ---
@@ -101,3 +101,26 @@ Dans les modèles, des getters encapsulent la lecture historique pour préserver
 - `effectiveSectionCableNeutre` : lit `sectionCableNeutre`, sinon bascule sur la phase, sinon sur `sectionCables`.
 - `effectiveMarque` : lit `marque`, sinon bascule sur la chaîne concaténée `marqueAnnee`.
 - `isDepartPrisAvecProtection` : dérive l'état directement du `typeProtection` de tête avec fallback sur le booléen legacy.
+- **Résolution centralisée du récepteur** : [PdfCoverBuilder.resolveRecepteurInfo](file:///c:/Users/TeufackAndelson/OneDrive%20-%20Kamer%20Engineering%20Solutions/Documents/Projets%20KES/inspection_app/lib/services/pdf/builders/pdf_cover_builder.dart) unifie la résolution du récepteur pour Vérif Électrique et Q18 :
+  - Priorise les champs dynamiques de `Mission` : `@HiveField(49)` `recepteurCivilite`, `@HiveField(50)` `recepteurNom`, `@HiveField(51)` `recepteurFonction`.
+  - Fallback automatique sur `@HiveField(47)` `recepteurRapport` et sur la boîte `RenseignementsGeneraux` historique.
+  - Extraction chirurgicale des préfixes de civilité (`M.`, `Monsieur`, `Mme`, `Madame`) pour éviter les duplications (ex. « Monsieur Monsieur »).
+  - Formatage en majuscules strictes pour le nom et la fonction (`TOUPPERCASE`), civilité par défaut `Monsieur`.
+
+---
+
+## 4. HISTORIQUE RÉCENT DES CHAMPS DU MODÈLE MISSION (`TypeId 1`)
+
+| Index `@HiveField` | Nom du Champ | Type | Valeur par défaut | Description & Rôle |
+|---|---|---|---|---|
+| `47` | `recepteurRapport` | `String?` | `null` | Destinataire du rapport (champ texte libre historique) |
+| `48` | `lieuIntervention` | `String?` | `null` | Lieu précis de l'intervention ou du site |
+| `49` | `recepteurCivilite` | `String?` | `null` | Civilité normalisée (`Monsieur`, `Madame`, etc.) |
+| `50` | `recepteurNom` | `String?` | `null` | Nom et prénom du destinataire |
+| `51` | `recepteurFonction` | `String?` | `null` | Fonction officielle (ex: `Directeur Technique`) |
+| `52` | `recepteurEmail` | `String?` | `null` | Adresse email du destinataire |
+| `53` | `recepteurTelephone` | `String?` | `null` | Numéro de téléphone du destinataire |
+| `54` | `docRapportQ18` | `bool` | `false` | Activation de la génération du rapport thermographique Q18 |
+| `55` | `centralePhotovoltaique` | `String?` | `'sans_objet'` | Présence centrale PV (`sans_objet`, `sans_stockage`, `avec_stockage`) |
+| `56` | `qrCodeQ18` | `String?` | `null` | Chemin local de l'image QR Code dédiée au rapport Q18 |
+

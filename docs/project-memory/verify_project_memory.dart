@@ -1,4 +1,4 @@
-﻿// verify_project_memory.dart
+// verify_project_memory.dart
 // Script de vérification de l'intégrité de la mémoire projet KES Inspection App
 // Usage : dart run docs/project-memory/verify_project_memory.dart
 // Ce script vérifie que les fichiers de mémoire sont présents, cohérents et à jour.
@@ -91,7 +91,8 @@ void main() async {
   // --- 4. Vérification des tests critiques ---
   final criticalTests = [
     'test/features/equipment_number_test.dart',
-    'test/features/data_integrity_test.dart',
+    'test/features/data_integrity_audit_test.dart',
+    'test/services/pdf_q18_report_service_test.dart',
   ];
 
   print('\n🧪 Vérification des suites de tests critiques...');

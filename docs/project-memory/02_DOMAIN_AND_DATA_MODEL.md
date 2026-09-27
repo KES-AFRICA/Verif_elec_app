@@ -1,8 +1,8 @@
 # 02_DOMAIN_AND_DATA_MODEL.md — Modèle Métier Électrique & Entités
 
 > **Module** : KES Inspection App — Pilier 2  
-> **Dernière révision** : 24 Septembre 2026  
-> **Source de vérité** : `lib/models/`, `lib/services/equipment_number_service.dart`, `lib/services/dispositions_constructives_registry.dart`
+> **Dernière révision** : 27 Septembre 2026  
+> **Source de vérité** : `lib/models/`, `lib/services/equipment_number_service.dart`, `lib/services/dispositions_constructives_registry.dart`, `lib/services/pdf/builders/pdf_cover_builder.dart`
 
 ---
 
@@ -12,9 +12,14 @@ L'arborescence des données telle qu'implémentée dans le code source réel est
 
 ```text
 Mission (lib/models/mission.dart)
- │
+ │  ├── Métadonnées administratives (Client, Site, Lieu, Adresse, Dates)
+ │  ├── Récepteur du rapport unifié (Civilite, Nom, Fonction, Email, Telephone + legacy recepteurRapport)
+ │  ├── Classement Réglementaire hiérarchique (Installations classées, IGH, ERP Généraux, ERP Spécialisés)
+ │  ├── Options documentaires & Rapports (docRapportQ18, qrCodeClient, qrCodeQ18)
+ │  ├── Caractéristiques spéciales du site (centralePhotovoltaique : sans_objet / sans_stockage / avec_stockage)
+ │  │
  ├── RenseignementsGénéraux (lib/models/renseignements_generaux.dart)
- │    ├── Données administratives (Client, Site, Lieu, Adresse, Dates)
+ │    ├── Données administratives et contacts d'exploitation
  │    ├── Intervenants & Responsables (Inspecteurs, Matricules, DG Responsable, Accompagnateurs)
  │    ├── Habilitations électriques (Titres, Validité, Organisme de formation)
  │    └── Documents d'exploitation collectés (Schémas, Registre sécurité, Plans)

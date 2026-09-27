@@ -3,7 +3,7 @@
 > **Projet** : KES Inspection App (`inspec_app`)  
 > **Organisation** : Kamer Engineering Solutions (KES Inspections & Projects)  
 > **Type d'application** : Application mobile & tablette Flutter (Offline-First) d'audit technique, inspection réglementaire des installations électriques, foudre, éclairage et génération de rapports d'ingénierie certifiés.  
-> **Dernière révision** : 16 Septembre 2026  
+> **Dernière révision** : 27 Septembre 2026  
 > **Rôle du document** : Mémoire opérationnelle vivante, constitution technique et guide d'action pour tout agent ou ingénieur intervenant sur la base de code.
 
 ---
@@ -53,7 +53,7 @@
   - Évaluation des risques foudre et contrôle des installations de protection (paratonnerres, parafoudres).
   - Audit d'éclairage et sécurité des personnes (JSA - Job Safety Analysis).
   - Analyse statistique déterministe, classification Pareto et appréciation synthétique globale du risque d'exploitation.
-  - Génération autonome sur site de livrables professionnels (Rapports PDF paginés de 50 à 150+ pages, classeurs Excel de données brutes, documents Word).
+  - Génération autonome sur site de livrables professionnels (Rapports PDF paginés de 50 à 150+ pages, classeurs Excel de données brutes, documents Word, et Rapport thermographique Q18 APSAD D18).
 
 ---
 
@@ -110,9 +110,6 @@ lib/
 ├── models/                     # Modèles Hive persistants (Data Layer legacy & partagé)
 ├── features/                   # Modules fonctionnels découpés en Clean Architecture
 │   ├── auth/                   # Authentification, gestion de session vérificateurs
-│   │   ├── data/ (datasources, mappers, repositories)
-│   │   ├── domain/ (entities, usecases)
-│   │   └── presentation/ (providers, screens, widgets)
 │   ├── mission/                # Cycle de vie des missions, création, sélection
 │   ├── audit_installations/    # MT, BT, locaux, cellules, transformateurs, coffrets
 │   ├── description_installations/ # Description générale du site, régimes de neutre
@@ -130,11 +127,11 @@ lib/
 │   ├── trash_service.dart      # Corbeille sécurisée avec rétention 90 jours
 │   ├── ai/                     # Intégration IA (Gemini/Groq) & cache des synthèses
 │   ├── statistics/             # 16 Moteurs statistiques et analytiques déterministes
-│   ├── pdf/                    # Moteur de génération PDF V3 par micro-lots
-│   │   ├── pdf_report_service.dart # Façade publique & orchestrateur 2-passes
+│   ├── pdf/                    # Moteurs de génération PDF V3 par micro-lots
+│   │   ├── pdf_report_service.dart # Rapport Vérification Électrique (13 builders)
+│   │   ├── q18/pdf_q18_report_service.dart # Rapport Thermographique Q18 APSAD D18 (7 builders)
 │   │   ├── pdf_report_context.dart # Contexte immuable partagé (assets, fonts, data)
 │   │   ├── pdf_report_styles.dart  # Charte graphique, palettes, métriques de table
-│   │   ├── pdf_chunk_merger.dart   # Fusion binaire mémoire/disque
 │   │   └── builders/               # 13 constructeurs spécialisés par section
 │   ├── excel/                  # Génération classeurs Excel (Syncfusion XlsIO)
 │   └── word_report_service.dart# Génération de rapports Word
@@ -168,9 +165,10 @@ lib/
   - `assets/images/` : Logos KES, tampons officiels, illustrations par défaut.
   - `assets/fonts/` : Polices TrueType (`Roboto-Regular.ttf`, `Roboto-Bold.ttf`) supportant la totalité des glyphes Unicode et caractères accentués français.
 - `test/` :
-  - `test/features/` : 100+ suites de tests unitaires et fonctionnels couvrant les règles métier, la synchronisation, les calculs de criticité et le rendu PDF.
-  - `test/services/` : Tests des services transversaux (Excel, Word, Backup, Moteurs IA).
+  - `test/features/` : 130+ suites de tests unitaires et fonctionnels couvrant les règles métier, la synchronisation, les calculs de criticité et le rendu PDF.
+  - `test/services/` : Tests des services transversaux (Excel, Word, Backup, Moteurs IA, Q18).
 - `docs/superpowers/` : Spécifications techniques détaillées (`specs/`) et plans d'implémentation validés (`plans/`).
+- `docs/project-memory/` : Référentiel des 8 piliers documentaires exhaustifs du projet.
 - `graphify-out/` : Graphe de connaissances et dépendances architecturales du projet.
 
 ---
@@ -180,7 +178,13 @@ lib/
 ### Hiérarchie Métier Principale
 
 ```text
-Mission
+Mission (lib/models/mission.dart)
+├── Métadonnées administratives (Client, Site, Lieu, Adresse, Dates)
+├── Récepteur du rapport unifié (recepteurCivilite, recepteurNom, recepteurFonction, recepteurEmail, recepteurTelephone, recepteurRapport)
+├── Classement Réglementaire hiérarchique (Installations classées, IGH, ERP Généraux, ERP Spécialisés)
+├── Options documentaires & Rapports (docRapportQ18, qrCodeClient, qrCodeQ18)
+├── Centrale photovoltaïque (sans_objet, sans_stockage, avec_stockage)
+│
 ├── RenseignementsGénéraux (Client, Site, Dates, Inspecteurs, Habilitation Électrique)
 ├── DescriptionInstallations (Postes MT, Transfos, TGBT, Régimes de Neutre, Sources Secours)
 ├── AuditInstallationsElectriques
@@ -400,8 +404,8 @@ Pour prévenir tout débordement mémoire sur des rapports de 100+ pages :
 3. **Fusion Binaire (`PdfMergerService`)** :
    - Assemblage séquentiel direct sans ré-encodage destructeur.
 
-### Répartition des 13 Builders Spécialisés
-- `PdfCoverBuilder` : Page de garde officielle KES, intervenants, client, site.
+### Rapport Vérification Électrique (13 Builders Spécialisés)
+- `PdfCoverBuilder` : Page de garde officielle KES, intervenants, client, site, récepteur dynamique, QR code.
 - `PdfSommaireBuilder` : Sommaire dynamique multi-pages synchronisé.
 - `PdfRegulatoryBuilder` : Normes applicables, matériels étalonnés, périmètre.
 - `PdfExecutiveSummaryBuilder` : Synthèse exécutive, criticité globale, facteurs clés.
@@ -414,6 +418,16 @@ Pour prévenir tout débordement mémoire sur des rapports de 100+ pages :
 - `PdfClassementFoudreBuilder` : Fiches de classement des locaux et audit foudre.
 - `PdfMesuresEssaisBuilder` : Tableaux paysage de mesures de terre, continuités et isolements.
 - `PdfPhotosSchemasBuilder` : Planches de photos probantes et schémas unifilaires.
+
+### Rapport Thermographique Q18 APSAD D18 V1 (7 Builders Dédiés)
+Moteur dédié [PdfQ18ReportService](file:///c:/Users/TeufackAndelson/OneDrive%20-%20Kamer%20Engineering%20Solutions/Documents/Projets%20KES/inspection_app/lib/services/pdf/q18/pdf_q18_report_service.dart) couvrant les 16 sections normatives du traité D18 :
+- `Q18CoverBuilder` : Couverture unifiée avec Vérif Elec via `PdfCoverBuilder.resolveRecepteurInfo`, texte central adapté Q18 et support de `qrCodeQ18`.
+- `Q18SommaireBuilder` : Sommaire 16 sections dynamique avec pagination absolue.
+- `Q18AdminConditionsBuilder` : Sections 1 à 5 (Conditions générales, opérateur, site, matériel thermographique).
+- `Q18ScopeEstablishmentBuilder` : Sections 6 à 9 (Classification, régimes de neutre, nature des installations).
+- `Q18ExclusionsSyntheseBuilder` : Sections 10 à 13 (Exclusions, synthèse globale des anomalies thermiques, attestations).
+- `Q18RecommendationsBuilder` : Sections 14 et 15 (Mesures d'urgence et prescriptions de maintenance).
+- `Q18PhotosBuilder` : Section 16 (Planches de clichés thermographiques & visibles). Implémente le pattern **Preflight Zero-Load** en Passe 1 (conteneurs factices sans décodage mémoire) et une compression adaptative des clichés en Passe 2 (<4 Mo au total).
 
 ---
 
@@ -440,7 +454,13 @@ Pour prévenir tout débordement mémoire sur des rapports de 100+ pages :
 3. **Usage interdit de `ctx.pagesCount` dans les Footers de Chunks** :
    - *Cause* : Affichait des compteurs locaux absurdes (ex: `Page 2 / 3` dans la section Mesures).
    - *Règle* : Le footer utilise uniquement `ctx.pageNumber + pageOffset` et la variable globale `overrideTotalPages`.
-4. **Verrouillage de fichier sous Windows lors des builds Android (`mergeReleaseNativeLibs`)** :
+4. **Piège du Court-Circuit dans la Résolution du Récepteur** :
+   - *Cause* : Les getters résilients retournant une valeur non-nulle (`'Monsieur'` ou `''`), l'opérateur `??` court-circuitait le fallback vers les données `recepteurRapport` et `RenseignementsGeneraux`.
+   - *Règle* : Tester explicitement le contenu textuel (`isNotEmpty`) avant de décider d'ignorer la source historique.
+5. **OOM et Explosion de Taille PDF en Q18** :
+   - *Cause* : Chargement et décodage de toutes les photos thermiques dès la Passe 1 de pre-flight.
+   - *Règle* : Appliquer le pattern **Preflight Zero-Load** (conteneurs virtuels avec layout préservé sans décodage d'image en Passe 1).
+6. **Verrouillage de fichier sous Windows lors des builds Android (`mergeReleaseNativeLibs`)** :
    - *Cause* : Processus Gradle ou antivirus maintenant un handle ouvert sur des bibliothèques natives `.so`.
    - *Règle* : Toujours stopper les démons Gradle (`gradlew --stop`) avant les builds de packaging lourd.
 
@@ -472,6 +492,21 @@ Pour prévenir tout débordement mémoire sur des rapports de 100+ pages :
 - **Décision** : Éclater le fichier monolithique de 21 700 lignes en 13 builders spécialisés coordonnés par `PdfReportContext` et `PdfReportStyles`.
 - **Raison** : Rendre le code maintenable, lisible, navigable et testable unitairement sans modifier d'un seul pixel le rendu final des livrables.
 
+### ADR-004 : Centralisation de la Numérotation des Équipements
+- **Date** : Septembre 2026
+- **Décision** : Créer `EquipmentNumberService` avec validation numérique stricte et séquence monotone croissante.
+- **Raison** : Garantir l'immuabilité et la cohérence de l'indexation N° à travers toute la mission sans interférence des bruits de saisie.
+
+### ADR-005 : Moteur de Rapport Q18 APSAD D18 V1 & Preflight Zero-Load
+- **Date** : Septembre 2026
+- **Décision** : Structurer `PdfQ18ReportService` en 7 builders modulaires et implémenter le pattern Preflight Zero-Load dans `Q18PhotosBuilder` avec compression d'images adaptative.
+- **Raison** : Prévenir les OOM lors de l'édition de rapports thermographiques lourds (50+ photos) et réduire la taille des PDF finaux de >75 % (<4 Mo).
+
+### ADR-006 : Unification de la Couverture PDF & Résolution Centralisée du Récepteur
+- **Date** : Septembre 2026
+- **Décision** : Harmoniser la couverture de tous les livrables KES via `PdfCoverBuilder.resolveRecepteurInfo` et supporter des QR codes dédiés (`qrCodeClient`, `qrCodeQ18`).
+- **Raison** : Assurer une identité graphique et une rigueur légale identiques sur l'ensemble des documents d'ingénierie KES.
+
 ---
 
 ## 24. Lessons Learned & Anti-Patterns
@@ -495,9 +530,9 @@ Pour prévenir tout débordement mémoire sur des rapports de 100+ pages :
 
 ## 26. Current Priorities
 
-1. Maintenir la stabilité absolue des 100+ tests de régression et l'exactitude des rapports produits.
-2. Garantir la conformité grammaticale et normative des termes affichés dans l'UI et les rapports.
-3. Préserver la fluidité de synchronisation d'arrière-plan sans impact sur la réactivité de saisie de l'inspecteur.
+1. **V1 stabilisée et prête pour la production** : Maintien de l'intégrité absolue des 160+ suites de tests automatisés couvrant les audits réels, le moteur PDF V3, le rapport Q18 V1 et la persistance Hive.
+2. **Garantie d'harmonie visuelle et documentaire** : Uniformisation de la couverture (résolution des récepteurs et QR codes) et exactitude normative (NF C 15-100, NF C 13-100/200, APSAD D18).
+3. **Prévention mémoire & performance terrain** : Respect strict du pattern Preflight Zero-Load et de la compression d'images lors de toute manipulation documentaire lourde.
 
 ---
 
