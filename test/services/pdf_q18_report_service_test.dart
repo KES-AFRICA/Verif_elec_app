@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import 'package:inspec_app/models/mission.dart';
 import 'package:inspec_app/models/renseignements_generaux.dart';
+import 'package:inspec_app/services/pdf/builders/pdf_cover_builder.dart';
 import 'package:inspec_app/services/pdf/builders/pdf_photos_schemas_builder.dart';
 import 'package:inspec_app/services/pdf/pdf_report_styles.dart';
 import 'package:inspec_app/services/pdf/q18/builders/q18_conclusion_builder.dart';
@@ -1097,6 +1098,75 @@ void main() {
       expect(json['qr_code_q18'], equals('path/to/qrcode_q18.png'));
       final rehydrated = Mission.fromJson(json);
       expect(rehydrated.qrCodeQ18, equals('path/to/qrcode_q18.png'));
+    });
+
+    test('20. Résolution dynamique et unifiée du Récepteur (civilité, fonction majuscules et repli recepteurRapport)', () {
+      // Cas 1 : Mission avec champ historique recepteurRapport = 'LE DIRECTEUR GÉNÉRAL'
+      final m1 = Mission(
+        id: 'm1',
+        nomClient: 'CIMENCAM',
+        status: 'en_cours',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        recepteurRapport: 'LE DIRECTEUR GÉNÉRAL',
+      );
+      final r1 = PdfCoverBuilder.resolveRecepteurInfo(mission: m1);
+      expect(r1.attentionTitle, equals("A l'attention de Monsieur"));
+      expect(r1.fonctionAffichee, equals('LE DIRECTEUR GÉNÉRAL'));
+
+      // Cas 2 : Mission avec champ recepteurRapport = 'M. Le Directeur Général'
+      final m2 = Mission(
+        id: 'm2',
+        nomClient: 'CIMENCAM',
+        status: 'en_cours',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        recepteurRapport: 'M. Le Directeur Général',
+      );
+      final r2 = PdfCoverBuilder.resolveRecepteurInfo(mission: m2);
+      expect(r2.attentionTitle, equals("A l'attention de Monsieur"));
+      expect(r2.fonctionAffichee, equals('LE DIRECTEUR GÉNÉRAL'));
+
+      // Cas 3 : Mission avec champ recepteurRapport sur RenseignementsGeneraux
+      final m3 = Mission(
+        id: 'm3',
+        nomClient: 'CIMENCAM',
+        status: 'en_cours',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      final rg3 = RenseignementsGeneraux.create('m3')
+        ..etablissement = 'CIMENCAM'
+        ..recepteurRapport = 'Directeur Général';
+      final r3 = PdfCoverBuilder.resolveRecepteurInfo(mission: m3, rg: rg3);
+      expect(r3.attentionTitle, equals("A l'attention de Monsieur"));
+      expect(r3.fonctionAffichee, equals('DIRECTEUR GÉNÉRAL'));
+
+      // Cas 4 : Madame avec fonction
+      final m4 = Mission(
+        id: 'm4',
+        nomClient: 'CIMENCAM',
+        status: 'en_cours',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        recepteurCivilite: 'Madame',
+        recepteurFonction: 'Directrice Administrative',
+      );
+      final r4 = PdfCoverBuilder.resolveRecepteurInfo(mission: m4);
+      expect(r4.attentionTitle, equals("A l'attention de Madame"));
+      expect(r4.fonctionAffichee, equals('DIRECTRICE ADMINISTRATIVE'));
+
+      // Cas 5 : Aucun récepteur renseigné -> repli strict
+      final m5 = Mission(
+        id: 'm5',
+        nomClient: 'CIMENCAM',
+        status: 'en_cours',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      final r5 = PdfCoverBuilder.resolveRecepteurInfo(mission: m5);
+      expect(r5.attentionTitle, equals("A l'attention de Mme/M."));
+      expect(r5.fonctionAffichee, equals('XXXXXXXXXXXXXXX'));
     });
   });
 }

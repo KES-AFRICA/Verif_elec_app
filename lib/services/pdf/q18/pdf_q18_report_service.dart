@@ -9,8 +9,10 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'package:inspec_app/models/mission.dart';
+import 'package:inspec_app/models/renseignements_generaux.dart';
 import 'package:inspec_app/components/safe_file_image.dart';
 import 'package:inspec_app/services/cancellation_token.dart';
+import 'package:hive/hive.dart';
 import 'package:inspec_app/services/hive_service.dart';
 import 'package:inspec_app/services/pdf/pdf_report_service.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -706,26 +708,24 @@ class PdfQ18ReportService {
     required pw.Font fontRegular,
   }) {
     final mission = data.mission;
-    final rg = data.renseignements;
+    RenseignementsGeneraux? rg = data.renseignements;
+    if (rg == null && data.mission.id.isNotEmpty) {
+      try {
+        if (Hive.isBoxOpen('renseignements_generaux')) {
+          rg = HiveService.getRenseignementsGenerauxByMissionId(data.mission.id);
+        }
+      } catch (_) {}
+    }
 
     final nomClientStr = mission.nomClient.trim().isNotEmpty
         ? mission.nomClient.trim().toUpperCase()
         : 'CLIENT';
 
     // Détermination dynamique du récepteur (civilité + fonction en MAJUSCULES au rendu)
-    final rawFonction = (mission.recepteurFonction ?? rg?.recepteurFonction ?? mission.effectiveRecepteurFonction).trim();
-    final rawNom = (mission.recepteurNom ?? rg?.recepteurNom ?? mission.effectiveRecepteurNom).trim();
-    final rawCivilite = (mission.recepteurCivilite ?? rg?.recepteurCivilite ?? mission.effectiveRecepteurCivilite ?? '').trim();
-    final bool hasRecepteur = rawFonction.isNotEmpty || rawNom.isNotEmpty;
-    final String? civiliteEffective = rawCivilite.isNotEmpty
-        ? rawCivilite
-        : (hasRecepteur ? 'Monsieur' : null);
-    final String attentionTitle = civiliteEffective != null
-        ? "A l'attention de $civiliteEffective"
-        : "A l'attention de Mme/M.";
-    final String fonctionAffichee = rawFonction.isNotEmpty
-        ? rawFonction.toUpperCase()
-        : (rawNom.isNotEmpty ? rawNom.toUpperCase() : 'XXXXXXXXXXXXXXX');
+    // Synchronisée rigoureusement avec le rapport Vérification Électrique (PdfCoverBuilder)
+    final recepteur = PdfCoverBuilder.resolveRecepteurInfo(mission: mission, rg: rg);
+    final String attentionTitle = recepteur.attentionTitle;
+    final String fonctionAffichee = recepteur.fonctionAffichee;
 
     final nomSiteStr = (mission.nomSite ?? rg?.nomSite ?? '').trim().toUpperCase();
     final lieuInterventionStr = (mission.lieuIntervention ?? rg?.lieuIntervention ?? (nomSiteStr.isNotEmpty ? nomSiteStr : '')).trim();

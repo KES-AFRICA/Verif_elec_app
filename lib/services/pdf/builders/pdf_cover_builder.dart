@@ -32,6 +32,86 @@ class PdfCoverBuilder {
   static String docStatus(bool? val) =>
       val == true ? 'Présenté' : 'Non présenté';
 
+  /// Résolution dynamique du récepteur du rapport (civilité et fonction/nom en majuscules)
+  /// Utilisée de manière rigoureusement identique pour la page de garde Verif Elec et Q18.
+  static ({String attentionTitle, String fonctionAffichee}) resolveRecepteurInfo({
+    required Mission mission,
+    RenseignementsGeneraux? rg,
+  }) {
+    String rawFonction = (mission.recepteurFonction ??
+            rg?.recepteurFonction ??
+            mission.recepteurRapport ??
+            rg?.recepteurRapport ??
+            mission.effectiveRecepteurFonction)
+        .trim();
+    String rawNom = (mission.recepteurNom ??
+            rg?.recepteurNom ??
+            mission.effectiveRecepteurNom)
+        .trim();
+    String rawCivilite = (mission.recepteurCivilite ??
+            rg?.recepteurCivilite ??
+            mission.effectiveRecepteurCivilite ??
+            '')
+        .trim();
+
+    // Si la civilité commence dans la fonction, l'extraire et nettoyer la fonction
+    final lowerFonction = rawFonction.toLowerCase();
+    if (lowerFonction.startsWith('monsieur ') || lowerFonction == 'monsieur') {
+      if (rawCivilite.isEmpty || rawCivilite == 'Mme/M.') rawCivilite = 'Monsieur';
+      rawFonction = rawFonction.substring(lowerFonction.startsWith('monsieur ') ? 9 : lowerFonction.length).trim();
+    } else if (lowerFonction.startsWith('m. ') || lowerFonction.startsWith('m.')) {
+      if (rawCivilite.isEmpty || rawCivilite == 'Mme/M.') rawCivilite = 'Monsieur';
+      rawFonction = rawFonction.substring(lowerFonction.startsWith('m. ') ? 3 : 2).trim();
+    } else if (lowerFonction.startsWith('madame ') || lowerFonction == 'madame') {
+      if (rawCivilite.isEmpty || rawCivilite == 'Mme/M.') rawCivilite = 'Madame';
+      rawFonction = rawFonction.substring(lowerFonction.startsWith('madame ') ? 7 : lowerFonction.length).trim();
+    } else if (lowerFonction.startsWith('mme ') || lowerFonction.startsWith('mme.')) {
+      if (rawCivilite.isEmpty || rawCivilite == 'Mme/M.') rawCivilite = 'Madame';
+      rawFonction = rawFonction.substring(lowerFonction.startsWith('mme ') ? 4 : 4).trim();
+    } else if (lowerFonction.startsWith('mademoiselle ') || lowerFonction == 'mademoiselle') {
+      if (rawCivilite.isEmpty || rawCivilite == 'Mme/M.') rawCivilite = 'Mademoiselle';
+      rawFonction = rawFonction.substring(lowerFonction.startsWith('mademoiselle ') ? 13 : lowerFonction.length).trim();
+    } else if (lowerFonction.startsWith('mlle ') || lowerFonction.startsWith('mlle.')) {
+      if (rawCivilite.isEmpty || rawCivilite == 'Mme/M.') rawCivilite = 'Mademoiselle';
+      rawFonction = rawFonction.substring(lowerFonction.startsWith('mlle ') ? 5 : 5).trim();
+    }
+
+    if (rawCivilite.isEmpty || rawCivilite == 'Mme/M.') {
+      final lowerNom = rawNom.toLowerCase();
+      if (lowerNom.startsWith('monsieur ') || lowerNom == 'monsieur') {
+        rawCivilite = 'Monsieur';
+        rawNom = rawNom.substring(lowerNom.startsWith('monsieur ') ? 9 : lowerNom.length).trim();
+      } else if (lowerNom.startsWith('m. ') || lowerNom.startsWith('m.')) {
+        rawCivilite = 'Monsieur';
+        rawNom = rawNom.substring(lowerNom.startsWith('m. ') ? 3 : 2).trim();
+      } else if (lowerNom.startsWith('madame ') || lowerNom == 'madame') {
+        rawCivilite = 'Madame';
+        rawNom = rawNom.substring(lowerNom.startsWith('madame ') ? 7 : lowerNom.length).trim();
+      } else if (lowerNom.startsWith('mme ') || lowerNom.startsWith('mme.')) {
+        rawCivilite = 'Madame';
+        rawNom = rawNom.substring(lowerNom.startsWith('mme ') ? 4 : 4).trim();
+      }
+    }
+
+    final bool hasRecepteur = rawFonction.isNotEmpty || rawNom.isNotEmpty;
+    final String? civiliteEffective = rawCivilite.isNotEmpty
+        ? rawCivilite
+        : (hasRecepteur ? 'Monsieur' : null);
+
+    final String attentionTitle = civiliteEffective != null
+        ? "A l'attention de $civiliteEffective"
+        : "A l'attention de Mme/M.";
+
+    final String fonctionAffichee = rawFonction.isNotEmpty
+        ? rawFonction.toUpperCase()
+        : (rawNom.isNotEmpty ? rawNom.toUpperCase() : 'XXXXXXXXXXXXXXX');
+
+    return (
+      attentionTitle: attentionTitle,
+      fonctionAffichee: fonctionAffichee,
+    );
+  }
+
 
   static Future<void> preloadCoverImages(
     Mission mission, {
@@ -128,19 +208,9 @@ class PdfCoverBuilder {
     final nomClientStr = mission.nomClient.trim().toUpperCase();
     
     // Détermination dynamique du récepteur (civilité + fonction en MAJUSCULES au rendu)
-    final rawFonction = (mission.recepteurFonction ?? rg?.recepteurFonction ?? mission.recepteurRapport ?? rg?.recepteurRapport ?? '').trim();
-    final rawNom = (mission.recepteurNom ?? rg?.recepteurNom ?? '').trim();
-    final rawCivilite = (mission.recepteurCivilite ?? rg?.recepteurCivilite ?? '').trim();
-    final bool hasRecepteur = rawFonction.isNotEmpty || rawNom.isNotEmpty;
-    final String? civiliteEffective = rawCivilite.isNotEmpty
-        ? rawCivilite
-        : (hasRecepteur ? 'Monsieur' : null);
-    final String attentionTitle = civiliteEffective != null
-        ? "A l'attention de $civiliteEffective"
-        : "A l'attention de Mme/M.";
-    final String fonctionAffichee = rawFonction.isNotEmpty
-        ? rawFonction.toUpperCase()
-        : (rawNom.isNotEmpty ? rawNom.toUpperCase() : 'XXXXXXXXXXXXXXX');
+    final recepteur = resolveRecepteurInfo(mission: mission, rg: rg);
+    final String attentionTitle = recepteur.attentionTitle;
+    final String fonctionAffichee = recepteur.fonctionAffichee;
 
     final nomSiteStr = (mission.nomSite ?? rg?.nomSite ?? '').trim().toUpperCase();
     final siteAffichage = nomSiteStr.isNotEmpty ? nomSiteStr : nomClientStr;
