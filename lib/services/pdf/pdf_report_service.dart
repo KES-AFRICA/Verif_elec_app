@@ -861,12 +861,14 @@ class PdfReportService {
     List<ClassementZone> zonesClassement,
     Map<String, int> trackedPages, {
     int offset = 0,
+    AuditInstallationsElectriques? audit,
   }) =>
       PdfClassementFoudreBuilder.buildClassementEmplacementsMulti(
         emplacements,
         zonesClassement,
         trackedPages,
         offset: offset,
+        audit: audit,
       );
 
   static List<pw.Widget> _buildFoudre(
@@ -3208,6 +3210,7 @@ class PdfReportService {
           classementsZones,
           trackedPages,
           offset: currentOffset,
+          audit: audit,
         ),
       ),
     );
@@ -3596,6 +3599,23 @@ class PdfReportService {
       final classementsZones = HiveService.getClassementsZonesByMissionId(
         missionId,
       );
+      if (audit != null) {
+        final knownZoneNames = classementsZones.map((cz) => cz.nomZone.trim().toLowerCase()).toSet();
+        for (final z in [...audit.moyenneTensionZones, ...audit.basseTensionZones]) {
+          final zNom = z.nom.trim().toLowerCase();
+          if (knownZoneNames.contains(zNom)) continue;
+
+          ClassementZone? cz;
+          if (z.classementZoneId != null && z.classementZoneId!.isNotEmpty) {
+            cz = HiveService.getClassementZoneById(z.classementZoneId!);
+          }
+          cz ??= HiveService.getClassementZoneByNom(missionId, z.nom.trim());
+          if (cz != null) {
+            classementsZones.add(cz);
+            knownZoneNames.add(zNom);
+          }
+        }
+      }
       final mesures = HiveService.getMesuresEssaisByMissionId(missionId);
       final foudres = HiveService.getFoudreObservationsByMissionId(missionId);
       final renseignements = HiveService.getRenseignementsGenerauxByMissionId(

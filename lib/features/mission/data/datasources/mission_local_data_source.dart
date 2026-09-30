@@ -22,6 +22,10 @@ abstract class MissionLocalDataSource {
     required String missionId,
     required String option,
   });
+  Future<bool> updateCentralePhotovoltaique({
+    required String missionId,
+    required String option,
+  });
   Future<bool> updateMissionStatus({
     required String missionId,
     required String status,
@@ -176,6 +180,25 @@ class MissionLocalDataSourceImpl implements MissionLocalDataSource {
       if (mission == null) return false;
       
       mission.schemaOption = option;
+      mission.updatedAt = DateTime.now();
+      await mission.save();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> updateCentralePhotovoltaique({
+    required String missionId,
+    required String option,
+  }) async {
+    try {
+      final box = Hive.box<Mission>(_missionBox);
+      final mission = box.get(missionId);
+      if (mission == null) return false;
+      
+      mission.centralePhotovoltaique = option;
       mission.updatedAt = DateTime.now();
       await mission.save();
       return true;

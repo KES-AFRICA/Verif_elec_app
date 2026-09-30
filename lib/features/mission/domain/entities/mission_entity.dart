@@ -55,6 +55,7 @@ class MissionEntity {
   final String? recepteurFonction;
   final String? recepteurEmail;
   final String? recepteurTelephone;
+  final String? centralePhotovoltaique;
 
   const MissionEntity({
     required this.id,
@@ -112,6 +113,7 @@ class MissionEntity {
     this.recepteurFonction,
     this.recepteurEmail,
     this.recepteurTelephone,
+    this.centralePhotovoltaique = 'sans_objet',
   });
 
   bool get isEnAttente => status.toLowerCase() == 'en_attente';

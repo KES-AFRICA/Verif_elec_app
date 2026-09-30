@@ -21,6 +21,10 @@ abstract class MissionRepository {
     required String missionId,
     required String option,
   });
+  Future<bool> updateCentralePhotovoltaique({
+    required String missionId,
+    required String option,
+  });
   Future<bool> updateMissionStatus({
     required String missionId,
     required String status,

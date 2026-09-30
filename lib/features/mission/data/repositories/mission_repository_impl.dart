@@ -70,6 +70,17 @@ class MissionRepositoryImpl implements MissionRepository {
   }
 
   @override
+  Future<bool> updateCentralePhotovoltaique({
+    required String missionId,
+    required String option,
+  }) {
+    return missionLocalDataSource.updateCentralePhotovoltaique(
+      missionId: missionId,
+      option: option,
+    );
+  }
+
+  @override
   Future<bool> updateMissionStatus({
     required String missionId,
     required String status,

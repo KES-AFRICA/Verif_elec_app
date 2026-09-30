@@ -4118,10 +4118,16 @@ static Map<String, dynamic> getEmplacementsStats(String missionId) {
   };
 }
 
-// Ajouter cette méthode pour récupérer un classement par ID
+// Récupérer un classement par ID (supporte les clés String et int)
 static ClassementEmplacement? getClassementById(String id) {
   final box = Hive.box<ClassementEmplacement>(_classementBox);
-  return box.get(id);
+  final direct = box.get(id);
+  if (direct != null) return direct;
+  final intKey = int.tryParse(id);
+  if (intKey != null) {
+    return box.get(intKey);
+  }
+  return null;
 }
 
 /// Synchroniser automatiquement les ZONES depuis l'audit
@@ -8392,7 +8398,14 @@ static ClassementZone? getClassementZoneByNom(String missionId, String nomZone) 
       (cz) => cz.missionId == missionId && cz.nomZone == nomZone,
     );
   } catch (e) {
-    return null;
+    try {
+      final cleanNom = nomZone.trim().toLowerCase();
+      return box.values.firstWhere(
+        (cz) => cz.missionId == missionId && cz.nomZone.trim().toLowerCase() == cleanNom,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 }
 
@@ -8501,11 +8514,17 @@ static Future<void> deleteClassementZone({
   }
 }
 
-/// Récupérer un classement de zone par son ID
+/// Récupérer un classement de zone par son ID (supporte les clés String et int)
 static ClassementZone? getClassementZoneById(String id) {
   try {
     final box = Hive.box<ClassementZone>(_classementZoneBox);
-    return box.get(id);
+    final direct = box.get(id);
+    if (direct != null) return direct;
+    final intKey = int.tryParse(id);
+    if (intKey != null) {
+      return box.get(intKey);
+    }
+    return null;
   } catch (e) {
     if (kDebugMode) {
       print('❌ Erreur getClassementZoneById: $e');

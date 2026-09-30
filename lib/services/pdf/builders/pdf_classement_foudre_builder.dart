@@ -132,12 +132,14 @@ class PdfClassementFoudreBuilder {
     List<ClassementZone> zonesClassement,
     Map<String, int> trackedPages, {
     int offset = 0,
+    AuditInstallationsElectriques? audit,
   }) =>
       buildClassementEmplacementsMulti(
         emplacements,
         zonesClassement,
         trackedPages,
         offset: offset,
+        audit: audit,
       );
 
   static List<pw.Widget> _buildCodificationInfluencesMulti() =>
@@ -193,6 +195,7 @@ class PdfClassementFoudreBuilder {
     List<ClassementZone> zonesClassement,
     Map<String, int> trackedPages, {
     int offset = 0,
+    AuditInstallationsElectriques? audit,
   }) {
     final widgets = <pw.Widget>[];
 
@@ -219,22 +222,59 @@ class PdfClassementFoudreBuilder {
 
     final rows = <PdfClassementRow>[];
 
-    // 1. Zones classées dans la mission (Règles A et B : Ligne 1 de la Zone avec Repère vide)
+    // Indexer les emplacements de type 'zone' par nom insensible à la casse
+    final zoneEmplacementsByName = <String, ClassementEmplacement>{};
+    for (final emp in emplacements) {
+      if (emp.typeEmplacement == 'zone' && emp.localisation.trim().isNotEmpty) {
+        zoneEmplacementsByName[emp.localisation.trim().toLowerCase()] = emp;
+      }
+    }
+
+    // 1. Zones classées dans la mission (zonesClassement)
     for (var zone in zonesClassement) {
-      if (zone.nomZone.trim().isEmpty || !zone.estComplet) continue;
+      final nomClean = zone.nomZone.trim();
+      if (nomClean.isEmpty) continue;
+
+      // Récupérer un éventuel ClassementEmplacement correspondant pour enrichir/fusionner
+      final matchingEmp = zoneEmplacementsByName[nomClean.toLowerCase()];
+
+      final effectiveAf = (zone.af != null && zone.af!.trim().isNotEmpty) ? zone.af : matchingEmp?.af;
+      final effectiveBe = (zone.be != null && zone.be!.trim().isNotEmpty) ? zone.be : matchingEmp?.be;
+      final effectiveAe = (zone.ae != null && zone.ae!.trim().isNotEmpty) ? zone.ae : matchingEmp?.ae;
+      final effectiveAd = (zone.ad != null && zone.ad!.trim().isNotEmpty) ? zone.ad : matchingEmp?.ad;
+      final effectiveAg = (zone.ag != null && zone.ag!.trim().isNotEmpty) ? zone.ag : matchingEmp?.ag;
+      final effectiveIp = (zone.ip != null && zone.ip!.trim().isNotEmpty) ? zone.ip : matchingEmp?.ip;
+      final effectiveIk = (zone.ik != null && zone.ik!.trim().isNotEmpty) ? zone.ik : matchingEmp?.ik;
+      final effectiveOrigine = (zone.origineClassement.trim().isNotEmpty && zone.origineClassement != 'KES I&P')
+          ? zone.origineClassement
+          : (matchingEmp?.origineClassement ?? zone.origineClassement);
+
+      final hasAnyInfluence = (effectiveAf != null && effectiveAf.trim().isNotEmpty) ||
+          (effectiveBe != null && effectiveBe.trim().isNotEmpty) ||
+          (effectiveAe != null && effectiveAe.trim().isNotEmpty) ||
+          (effectiveAd != null && effectiveAd.trim().isNotEmpty) ||
+          (effectiveAg != null && effectiveAg.trim().isNotEmpty) ||
+          (effectiveIp != null && effectiveIp.trim().isNotEmpty) ||
+          (effectiveIk != null && effectiveIk.trim().isNotEmpty);
+
+      // Si la zone est complète ou possède au moins une influence ou une origine personnalisée
+      if (!zone.estComplet && !hasAnyInfluence && effectiveOrigine == 'KES I&P') {
+        continue;
+      }
+
       rows.add(
         PdfClassementRow(
           localisation: '', // Repère vide pour l'entrée de Zone elle-même (Règles A et B)
-          zone: zone.nomZone.trim(),
+          zone: nomClean,
           type: 'Zone ${zone.typeZone}',
-          origineClassement: zone.origineClassement,
-          af: zone.af,
-          be: zone.be,
-          ae: zone.ae,
-          ad: zone.ad,
-          ag: zone.ag,
-          ip: zone.ip,
-          ik: zone.ik,
+          origineClassement: effectiveOrigine,
+          af: effectiveAf,
+          be: effectiveBe,
+          ae: effectiveAe,
+          ad: effectiveAd,
+          ag: effectiveAg,
+          ip: effectiveIp,
+          ik: effectiveIk,
           isZone: true,
         ),
       );
@@ -244,18 +284,26 @@ class PdfClassementFoudreBuilder {
     for (var emp in emplacements) {
       final isZoneEmp = emp.typeEmplacement == 'zone';
 
-      // Si c'est une zone déjà traitée dans zonesClassement, ne pas la dupliquer
+      // Si c'est une zone déjà présente dans rows, ne pas la dupliquer
       if (isZoneEmp) {
-        final dejaPresente = zonesClassement.any(
-          (z) => z.nomZone.trim().toLowerCase() == emp.localisation.trim().toLowerCase(),
+        final dejaPresente = rows.any(
+          (r) => r.isZone && r.zone.trim().toLowerCase() == emp.localisation.trim().toLowerCase(),
         );
         if (dejaPresente) continue;
-      }
 
-      final hasZoneParent = (emp.zone != null && emp.zone!.trim().isNotEmpty);
-      final String parentZoneName = hasZoneParent ? emp.zone!.trim() : '';
+        final hasAnyInfluence = (emp.af != null && emp.af!.trim().isNotEmpty) ||
+            (emp.be != null && emp.be!.trim().isNotEmpty) ||
+            (emp.ae != null && emp.ae!.trim().isNotEmpty) ||
+            (emp.ad != null && emp.ad!.trim().isNotEmpty) ||
+            (emp.ag != null && emp.ag!.trim().isNotEmpty) ||
+            (emp.ip != null && emp.ip!.trim().isNotEmpty) ||
+            (emp.ik != null && emp.ik!.trim().isNotEmpty);
 
-      if (isZoneEmp) {
+        // Si la zone n'a aucune influence et origine par défaut, ne pas l'ajouter
+        if (!hasAnyInfluence && emp.origineClassement == 'KES I&P') {
+          continue;
+        }
+
         // Zone classée présente uniquement dans emplacements (Règle A)
         rows.add(
           PdfClassementRow(
@@ -273,42 +321,123 @@ class PdfClassementFoudreBuilder {
             isZone: true,
           ),
         );
+        continue;
+      }
+
+      final hasZoneParent = (emp.zone != null && emp.zone!.trim().isNotEmpty);
+      final String parentZoneName = hasZoneParent ? emp.zone!.trim() : '';
+
+      // C'est un local / repère (Règle B ou C)
+      if (hasZoneParent) {
+        // Règle B : Local dans une zone classée (Zone = nom zone, Repère = nom local)
+        rows.add(
+          PdfClassementRow(
+            localisation: emp.localisation.trim(),
+            zone: parentZoneName,
+            type: 'Local',
+            origineClassement: emp.origineClassement,
+            af: emp.af,
+            be: emp.be,
+            ae: emp.ae,
+            ad: emp.ad,
+            ag: emp.ag,
+            ip: emp.ip,
+            ik: emp.ik,
+            isZone: false,
+          ),
+        );
       } else {
-        // C'est un local / repère (Règle B ou C)
-        if (hasZoneParent) {
-          // Règle B : Local dans une zone classée (Zone = nom zone, Repère = nom local)
+        // Règle C : Local hors zone (Zone = '', Repère = nom local)
+        rows.add(
+          PdfClassementRow(
+            localisation: emp.localisation.trim(),
+            zone: '',
+            type: 'Local',
+            origineClassement: emp.origineClassement,
+            af: emp.af,
+            be: emp.be,
+            ae: emp.ae,
+            ad: emp.ad,
+            ag: emp.ag,
+            ip: emp.ip,
+            ik: emp.ik,
+            isZone: false,
+          ),
+        );
+      }
+    }
+
+    // 3. Réconciliation depuis l'Audit (pour toute zone classée dans l'audit non encore incluse)
+    if (audit != null) {
+      final allAuditZones = [
+        ...audit.moyenneTensionZones.map((z) => (z.nom, z.classementZoneId, 'MT')),
+        ...audit.basseTensionZones.map((z) => (z.nom, z.classementZoneId, 'BT')),
+      ];
+
+      for (final item in allAuditZones) {
+        final zNom = item.$1;
+        final zClassementId = item.$2;
+        final zType = item.$3;
+        final cleanNom = zNom.trim();
+        if (cleanNom.isEmpty) continue;
+
+        final dejaAjoutee = rows.any(
+          (r) => r.isZone && r.zone.trim().toLowerCase() == cleanNom.toLowerCase(),
+        );
+        if (dejaAjoutee) continue;
+
+        // Tenter de retrouver le classement par classementZoneId ou nom
+        ClassementZone? cz;
+        if (zClassementId != null && zClassementId.isNotEmpty) {
+          cz = HiveService.getClassementZoneById(zClassementId);
+        }
+        if (cz == null && audit.missionId.isNotEmpty) {
+          cz = HiveService.getClassementZoneByNom(audit.missionId, cleanNom);
+        }
+
+        // Tenter également de retrouver un ClassementEmplacement
+        ClassementEmplacement? emp;
+        if (zClassementId != null && zClassementId.isNotEmpty) {
+          emp = HiveService.getClassementById(zClassementId);
+        }
+        if (emp == null && audit.missionId.isNotEmpty) {
+          emp = HiveService.getEmplacementByNom(audit.missionId, cleanNom);
+        }
+
+        final effectiveAf = cz?.af ?? emp?.af;
+        final effectiveBe = cz?.be ?? emp?.be;
+        final effectiveAe = cz?.ae ?? emp?.ae;
+        final effectiveAd = cz?.ad ?? emp?.ad;
+        final effectiveAg = cz?.ag ?? emp?.ag;
+        final effectiveIp = cz?.ip ?? emp?.ip;
+        final effectiveIk = cz?.ik ?? emp?.ik;
+        final effectiveOrigine = (cz != null && cz.origineClassement.isNotEmpty && cz.origineClassement != 'KES I&P')
+            ? cz.origineClassement
+            : (emp?.origineClassement ?? cz?.origineClassement ?? 'KES I&P');
+
+        final hasAnyInfluence = (effectiveAf != null && effectiveAf.trim().isNotEmpty) ||
+            (effectiveBe != null && effectiveBe.trim().isNotEmpty) ||
+            (effectiveAe != null && effectiveAe.trim().isNotEmpty) ||
+            (effectiveAd != null && effectiveAd.trim().isNotEmpty) ||
+            (effectiveAg != null && effectiveAg.trim().isNotEmpty) ||
+            (effectiveIp != null && effectiveIp.trim().isNotEmpty) ||
+            (effectiveIk != null && effectiveIk.trim().isNotEmpty);
+
+        if (hasAnyInfluence || (cz != null && cz.estComplet)) {
           rows.add(
             PdfClassementRow(
-              localisation: emp.localisation.trim(),
-              zone: parentZoneName,
-              type: 'Local',
-              origineClassement: emp.origineClassement,
-              af: emp.af,
-              be: emp.be,
-              ae: emp.ae,
-              ad: emp.ad,
-              ag: emp.ag,
-              ip: emp.ip,
-              ik: emp.ik,
-              isZone: false,
-            ),
-          );
-        } else {
-          // Règle C : Local hors zone (Zone = '', Repère = nom local)
-          rows.add(
-            PdfClassementRow(
-              localisation: emp.localisation.trim(),
-              zone: '',
-              type: 'Local',
-              origineClassement: emp.origineClassement,
-              af: emp.af,
-              be: emp.be,
-              ae: emp.ae,
-              ad: emp.ad,
-              ag: emp.ag,
-              ip: emp.ip,
-              ik: emp.ik,
-              isZone: false,
+              localisation: '',
+              zone: cleanNom,
+              type: 'Zone ${cz?.typeZone ?? zType}',
+              origineClassement: effectiveOrigine,
+              af: effectiveAf,
+              be: effectiveBe,
+              ae: effectiveAe,
+              ad: effectiveAd,
+              ag: effectiveAg,
+              ip: effectiveIp,
+              ik: effectiveIk,
+              isZone: true,
             ),
           );
         }

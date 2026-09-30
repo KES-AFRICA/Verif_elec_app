@@ -60,6 +60,7 @@ class MissionMapper {
       recepteurFonction: model.recepteurFonction,
       recepteurEmail: model.recepteurEmail,
       recepteurTelephone: model.recepteurTelephone,
+      centralePhotovoltaique: model.centralePhotovoltaique,
     );
   }
   static Mission toModel(MissionEntity entity) {
@@ -120,6 +121,7 @@ class MissionMapper {
       recepteurFonction: entity.recepteurFonction,
       recepteurEmail: entity.recepteurEmail,
       recepteurTelephone: entity.recepteurTelephone,
+      centralePhotovoltaique: entity.centralePhotovoltaique,
     );
     
     // renseignementsGenerauxId n'est pas présent dans le constructeur de Mission

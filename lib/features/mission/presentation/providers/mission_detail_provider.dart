@@ -125,8 +125,13 @@ class MissionDetailNotifier extends StateNotifier<AsyncValue<Mission>> {
     try {
       current.centralePhotovoltaique = option;
       current.updatedAt = DateTime.now();
-      await current.save();
       state = AsyncValue.data(current);
+
+      final updateUseCase = ref.read(updateCentralePhotovoltaiqueUseCaseProvider);
+      await updateUseCase(
+        missionId: missionId,
+        option: option,
+      );
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
     }
