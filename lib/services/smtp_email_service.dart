@@ -51,9 +51,9 @@ class SmtpEmailService {
       
       // 3. Construction de l'email (CORRIGÉ)
       final message = Message()
-        ..from = Address(_email, 'Inspec App - KES')
+        ..from = Address(_email, 'Vérif Elec - KES')
         ..recipients.add(toEmail)
-        ..subject = '🔐 Code de réinitialisation - Inspec App'
+        ..subject = '🔐 Code de réinitialisation - Vérif Elec'
         ..html = _buildEmailTemplate(userName, otpCode)
         ..text = _buildPlainTextEmail(userName, otpCode);
       
@@ -248,7 +248,7 @@ class SmtpEmailService {
   
   static String _buildPlainTextEmail(String userName, String otpCode) {
     return '''
-INSPEC APP - RÉINITIALISATION DE MOT DE PASSE
+VÉRIF ELEC - RÉINITIALISATION DE MOT DE PASSE
 
 Bonjour $userName,
 
@@ -277,7 +277,7 @@ KES INSPECTIONS AND PROJECTS
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Réinitialisation - Inspec App</title>
+  <title>Réinitialisation - Vérif Elec</title>
   <style>
     * {
       margin: 0;

@@ -381,7 +381,7 @@ class PdfQ18ReportService {
     final pdf = pw.Document(
       title: 'Rapport Q18 - ${data.mission.nomClient}',
       author: 'KES INSPECTIONS AND PROJECTS',
-      creator: 'KES Inspection App',
+      creator: 'KES Vérif Elec',
       compress: true,
     );
 

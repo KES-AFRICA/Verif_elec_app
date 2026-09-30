@@ -50,7 +50,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Inspection App',
+      title: 'Vérif Elec',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       initialRoute: '/',
