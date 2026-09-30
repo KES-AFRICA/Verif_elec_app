@@ -3601,19 +3601,26 @@ class PdfReportService {
       );
       if (audit != null) {
         final knownZoneNames = classementsZones.map((cz) => cz.nomZone.trim().toLowerCase()).toSet();
-        for (final z in [...audit.moyenneTensionZones, ...audit.basseTensionZones]) {
-          final zNom = z.nom.trim().toLowerCase();
-          if (knownZoneNames.contains(zNom)) continue;
+        void checkAndAddZone(String nom, String? classementZoneId) {
+          final zNom = nom.trim().toLowerCase();
+          if (zNom.isEmpty || knownZoneNames.contains(zNom)) return;
 
           ClassementZone? cz;
-          if (z.classementZoneId != null && z.classementZoneId!.isNotEmpty) {
-            cz = HiveService.getClassementZoneById(z.classementZoneId!);
+          if (classementZoneId != null && classementZoneId.isNotEmpty) {
+            cz = HiveService.getClassementZoneById(classementZoneId);
           }
-          cz ??= HiveService.getClassementZoneByNom(missionId, z.nom.trim());
+          cz ??= HiveService.getClassementZoneByNom(missionId, nom.trim());
           if (cz != null) {
             classementsZones.add(cz);
             knownZoneNames.add(zNom);
           }
+        }
+
+        for (final z in audit.moyenneTensionZones) {
+          checkAndAddZone(z.nom, z.classementZoneId);
+        }
+        for (final z in audit.basseTensionZones) {
+          checkAndAddZone(z.nom, z.classementZoneId);
         }
       }
       final mesures = HiveService.getMesuresEssaisByMissionId(missionId);
