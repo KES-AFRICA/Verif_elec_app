@@ -169,7 +169,8 @@ class PdfAuditInstallationsBuilder {
     List<ObservationLibre> obs,
     Map<String, int> trackedPages, {
     Map<String, int>? photoRegistry,
-  }) => buildZone(nom, obs, trackedPages, photoRegistry: photoRegistry);
+    String? missionId,
+  }) => buildZone(nom, obs, trackedPages, photoRegistry: photoRegistry, missionId: missionId);
 
   static pw.Widget _buildObsZoneTable(
     String zone,
@@ -652,7 +653,7 @@ class PdfAuditInstallationsBuilder {
     for (var zone in audit.moyenneTensionZones) {
       widgets.add(pw.NewPage());
       widgets.addAll(
-        _buildZone(zone.nom, zone.observationsLibres, trackedPages, photoRegistry: reg),
+        _buildZone(zone.nom, zone.observationsLibres, trackedPages, photoRegistry: reg, missionId: audit.missionId),
       );
 
       int elementIndex = 0;
@@ -677,7 +678,7 @@ class PdfAuditInstallationsBuilder {
     for (var zone in audit.basseTensionZones) {
       widgets.add(pw.NewPage());
       widgets.addAll(
-        _buildZone(zone.nom, zone.observationsLibres, trackedPages, photoRegistry: reg),
+        _buildZone(zone.nom, zone.observationsLibres, trackedPages, photoRegistry: reg, missionId: audit.missionId),
       );
 
       int elementIndex = 0;
@@ -710,7 +711,19 @@ class PdfAuditInstallationsBuilder {
     List<ObservationLibre> obs,
     Map<String, int> trackedPages, {
     Map<String, int>? photoRegistry,
+    String? missionId,
   }) {
+    String prefix = '';
+    if (missionId != null && missionId.trim().isNotEmpty) {
+      final parsed = IpIkEvaluatorService.resolveZoneIpIk(missionId, nom);
+      if (parsed.hasIpOrIk) {
+        prefix = '[ ${parsed.toString()} ] ';
+      } else {
+        prefix = '[ Non classée ] ';
+      }
+    }
+    final titleText = '$prefix${nom.toUpperCase()}';
+
     final widgets = <pw.Widget>[
       pw.SizedBox(height: 8),
       PageTracker(
@@ -721,7 +734,7 @@ class PdfAuditInstallationsBuilder {
           color: PdfReportStyles.accentColor,
           padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
           child: pw.Text(
-            nom.toUpperCase(),
+            titleText,
             style: pw.TextStyle(
               font: fontBold,
               fontSize: PdfReportStyles.fsH3,
@@ -1842,6 +1855,12 @@ class PdfAuditInstallationsBuilder {
           safe(cellule.fonction),
           alt: false,
         ),
+        if (cellule.celluleDepart != null && cellule.celluleDepart!.trim().isNotEmpty)
+          tableDataRowInfo(
+            'Cellule départ',
+            safe(cellule.celluleDepart),
+            alt: false,
+          ),
         tableDataRowInfo('Type de cellule', safe(cellule.type), alt: false),
         tableDataRowInfo(
           'Marque',
@@ -1883,11 +1902,14 @@ class PdfAuditInstallationsBuilder {
           safe(formatSectionWithConducteurs(cellule.effectiveSectionCablePhase, cellule.effectiveConducteursPhase)),
           alt: false,
         ),
-        tableDataRowInfo(
-          'Section de câble neutre (mm²)',
-          safe(formatSectionWithConducteurs(cellule.effectiveSectionCableNeutre, cellule.effectiveConducteursNeutre)),
-          alt: false,
-        ),
+        if (cellule.effectiveSectionCableNeutre != null &&
+            cellule.effectiveSectionCableNeutre!.isNotEmpty &&
+            cellule.effectiveSectionCableNeutre != '-')
+          tableDataRowInfo(
+            'Section de câble neutre (mm²)',
+            safe(formatSectionWithConducteurs(cellule.effectiveSectionCableNeutre, cellule.effectiveConducteursNeutre)),
+            alt: false,
+          ),
         tableDataRowInfo(
           'Nature du réseau',
           safe(cellule.natureReseau ?? ''),
@@ -2442,6 +2464,11 @@ class PdfAuditInstallationsBuilder {
         tableDataRowInfo(
           'Calibre du disjoncteur sortie transformateur (A)',
           safe(PdfReportStyles.stripUnitFromValue(transfo.calibreDisjoncteur, 'A')),
+          alt: false,
+        ),
+        tableDataRowInfo(
+          'Courant de réglage du disjoncteur (A)',
+          safe(PdfReportStyles.stripUnitFromValue(transfo.courantReglageDisjoncteur, 'A')),
           alt: false,
         ),
         tableDataRowInfo(

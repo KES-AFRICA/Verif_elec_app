@@ -28,6 +28,7 @@ import 'package:inspec_app/services/normative_search_service.dart';
 import 'package:inspec_app/components/normative_search_suggestions_widget.dart';
 import 'package:inspec_app/components/safe_file_image.dart';
 import 'package:inspec_app/services/local_type_transition_service.dart';
+import 'package:inspec_app/utils/observation_text_normalizer.dart';
 
 // Extension pour obtenir la taille de l'écran facilement
 extension ScreenSize on BuildContext {
@@ -2427,6 +2428,7 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
   final _celluleNumerotationController = TextEditingController();
   final _celluleParafoudresController = TextEditingController();
   final _celluleCalibreDisjoncteurController = TextEditingController();
+  final _celluleDepartController = TextEditingController();
   
   String? _celluleGamme;
   String? _celluleSectionCables;
@@ -2459,6 +2461,7 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
   final _transfoRefroidissementController = TextEditingController();
   final _transfoRegimeController = TextEditingController();
   final _transfoCalibreDisjoncteurController = TextEditingController();
+  final _transfoCourantReglageDisjoncteurController = TextEditingController();
   String? _transfoSectionCables;
   String? _transfoSectionCablePhase;
   String? _transfoSectionCableNeutre;
@@ -2574,6 +2577,7 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
     _celluleNumerotationController.text = '';
     _celluleParafoudresController.text = '';
     _celluleCalibreDisjoncteurController.clear();
+    _celluleDepartController.clear();
     _celluleGamme = null;
     _celluleSectionCables = null;
     _celluleSectionCablePhase = null;
@@ -2616,6 +2620,7 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
     _transfoRefroidissementController.text = '';
     _transfoRegimeController.text = '';
     _transfoCalibreDisjoncteurController.clear();
+    _transfoCourantReglageDisjoncteurController.clear();
     _transfoSectionCables = null;
     _transfoSectionCablePhase = null;
     _transfoSectionCableNeutre = null;
@@ -2653,6 +2658,7 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
     
     // Nouveaux champs
     _celluleCalibreDisjoncteurController.text = cellule.calibreDisjoncteur ?? '';
+    _celluleDepartController.text = cellule.celluleDepart ?? '';
     _celluleGamme = cellule.gamme;
     _celluleSectionCables = cellule.sectionCables;
     _celluleSectionCablePhase = (cellule.effectiveSectionCablePhase?.isNotEmpty == true) ? cellule.effectiveSectionCablePhase : null;
@@ -2700,6 +2706,7 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
     
     // Nouveaux champs
     _transfoCalibreDisjoncteurController.text = transfo.calibreDisjoncteur ?? '';
+    _transfoCourantReglageDisjoncteurController.text = transfo.courantReglageDisjoncteur ?? '';
     _transfoSectionCables = transfo.sectionCables;
     _transfoSectionCablePhase = (transfo.effectiveSectionCablePhase?.isNotEmpty == true) ? transfo.effectiveSectionCablePhase : null;
     _transfoSectionCableNeutre = (transfo.effectiveSectionCableNeutre?.isNotEmpty == true) ? transfo.effectiveSectionCableNeutre : null;
@@ -2838,6 +2845,7 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
       elementsVerifies: _celluleElements,
       gamme: _celluleGamme,
       calibreDisjoncteur: _celluleCalibreDisjoncteurController.text.trim(),
+      celluleDepart: _celluleDepartController.text.trim().isNotEmpty ? _celluleDepartController.text.trim() : null,
       sectionCables: _celluleSectionCablePhase ?? _celluleSectionCables,
       sectionCablePhase: _celluleSectionCablePhase,
       sectionCableNeutre: _celluleSectionCableNeutre,
@@ -3024,6 +3032,9 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
       regimeNeutre: _transfoRegimeController.text,
       elementsVerifies: _transfoElements,
       calibreDisjoncteur: _transfoCalibreDisjoncteurController.text.trim(),
+      courantReglageDisjoncteur: _transfoCourantReglageDisjoncteurController.text.trim().isNotEmpty
+          ? _transfoCourantReglageDisjoncteurController.text.trim()
+          : null,
       sectionCables: _transfoSectionCablePhase ?? _transfoSectionCables,
       sectionCablePhase: _transfoSectionCablePhase,
       sectionCableNeutre: _transfoSectionCableNeutre,
@@ -3689,7 +3700,25 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
           SizedBox(height: isSmallScreen ? 12 : 16),
           _buildTextField(_celluleNomController, 'Nom de la cellule (ex: Cellule Arrivée 1)', isSmallScreen, optional: true),
           SizedBox(height: isSmallScreen ? 12 : 16),
-          _buildDropdown(_celluleFonctionController, 'Fonction de la cellule', InstallationFieldsRegistry.fonctionCelluleOptions, isSmallScreen, optional: true),
+          _buildDropdown(
+            _celluleFonctionController,
+            'Fonction de la cellule',
+            InstallationFieldsRegistry.fonctionCelluleOptions,
+            isSmallScreen,
+            optional: true,
+            onSelected: (val) {
+              setState(() {});
+            },
+          ),
+          if (_celluleFonctionController.text.trim().toLowerCase() == 'cellule disjoncteur') ...[
+            SizedBox(height: isSmallScreen ? 12 : 16),
+            _buildTextField(
+              _celluleDepartController,
+              'Cellule départ (ex: Départ Transfo 1, Départ Ligne)',
+              isSmallScreen,
+              optional: true,
+            ),
+          ],
           SizedBox(height: isSmallScreen ? 12 : 16),
           _buildTextField(_celluleMarqueController, 'Marque', isSmallScreen, optional: true),
           SizedBox(height: isSmallScreen ? 12 : 16),
@@ -3791,13 +3820,6 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
                   if (_celluleConducteursPhaseController.text.trim().isEmpty) {
                     _celluleConducteursPhaseController.text = '1';
                   }
-                  // Auto-remplissage Phase -> Neutre si non modifié manuellement
-                  if (!_celluleNeutreManuallyModified) {
-                    _celluleSectionCableNeutre = value;
-                    if (_celluleConducteursNeutreController.text.trim().isEmpty) {
-                      _celluleConducteursNeutreController.text = '1';
-                    }
-                  }
                 } else {
                   _celluleConducteursPhaseController.text = '';
                 }
@@ -3814,41 +3836,6 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
               optional: false,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-          ],
-          SizedBox(height: isSmallScreen ? 12 : 16),
-          _buildDropdownVal(
-            _celluleSectionCableNeutre,
-            'Section de câble neutre',
-            _sectionCableOptions,
-            isSmallScreen,
-            (value) {
-              setState(() {
-                _celluleNeutreManuallyModified = true;
-                _celluleSectionCableNeutre = value;
-                if (value != null && value.isNotEmpty && value != '-') {
-                  if (_celluleConducteursNeutreController.text.trim().isEmpty) {
-                    _celluleConducteursNeutreController.text = '1';
-                  }
-                } else {
-                  _celluleConducteursNeutreController.text = '';
-                }
-              });
-            },
-            optional: true,
-          ),
-          if (_celluleSectionCableNeutre != null && _celluleSectionCableNeutre!.isNotEmpty && _celluleSectionCableNeutre != '-') ...[
-            SizedBox(height: isSmallScreen ? 12 : 16),
-            _buildTextField(
-              _celluleConducteursNeutreController,
-              'Nombre de conducteurs neutre',
-              isSmallScreen,
-              optional: false,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (_) {
-                _celluleNeutreManuallyModified = true;
-              },
             ),
           ],
           SizedBox(height: isSmallScreen ? 12 : 16),
@@ -4635,6 +4622,18 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
           ),
           SizedBox(height: isSmallScreen ? 12 : 16),
 
+          // 14bis. Courant de réglage du disjoncteur
+          _buildTextField(
+            _transfoCourantReglageDisjoncteurController,
+            'Courant de réglage du disjoncteur (Ir)',
+            isSmallScreen,
+            optional: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+            suffixText: 'A',
+          ),
+          SizedBox(height: isSmallScreen ? 12 : 16),
+
           // 15. Section des câbles
           _buildDropdownVal(
             _transfoSectionCablePhase,
@@ -5250,7 +5249,7 @@ Widget _buildPrioriteButton({
     );
   }
   
-  Widget _buildDropdown(TextEditingController controller, String label, List<String> options, bool isSmallScreen, {bool optional = false}) {
+  Widget _buildDropdown(TextEditingController controller, String label, List<String> options, bool isSmallScreen, {bool optional = false, void Function(String?)? onSelected}) {
     final labelText = optional ? label : '$label *';
     final hasValue = controller.text.isNotEmpty;
     final effectiveOptions = List<String>.from(options);
@@ -5274,7 +5273,10 @@ Widget _buildPrioriteButton({
         ),
         ...effectiveOptions.map((option) => DropdownMenuItem(value: option, child: Text(option, style: TextStyle(fontSize: isSmallScreen ? 13 : 14)))),
       ],
-      onChanged: (value) => controller.text = value ?? '',
+      onChanged: (value) {
+        controller.text = value ?? '';
+        onSelected?.call(value);
+      },
     );
   }
   
@@ -5414,6 +5416,7 @@ Widget _buildPrioriteButton({
     _celluleNumerotationController.dispose();
     _celluleParafoudresController.dispose();
     _celluleCalibreDisjoncteurController.dispose();
+    _celluleDepartController.dispose();
     _celluleConducteursPhaseController.dispose();
     _celluleConducteursNeutreController.dispose();
     _transfoNomController.dispose();
@@ -5429,6 +5432,7 @@ Widget _buildPrioriteButton({
     _transfoRefroidissementController.dispose();
     _transfoRegimeController.dispose();
     _transfoCalibreDisjoncteurController.dispose();
+    _transfoCourantReglageDisjoncteurController.dispose();
     _transfoConducteursPhaseController.dispose();
     _transfoConducteursNeutreController.dispose();
     // Libérer les controllers d'observation
@@ -6485,11 +6489,12 @@ class _AjouterLocalScreenState extends State<AjouterLocalScreen> {
     String? famille,
     String? crit,
   ]) {
-    final texte = _observationController.text.trim();
-    if (texte.isEmpty) {
+    final rawTexte = _observationController.text.trim();
+    if (rawTexte.isEmpty) {
       _showError('Veuillez saisir une observation');
       return;
     }
+    final texte = ObservationTextNormalizer.normalize(rawTexte) ?? rawTexte;
     setState(() {
       _observationsExistantes.add(ObservationLibre(
         texte: texte,

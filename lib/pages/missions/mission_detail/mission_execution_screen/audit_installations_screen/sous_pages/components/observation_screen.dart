@@ -7,6 +7,7 @@ import 'package:inspec_app/models/audit_installations_electriques.dart';
 import 'package:inspec_app/services/normative_search_service.dart';
 import 'package:inspec_app/components/normative_search_suggestions_widget.dart';
 import 'package:inspec_app/constants/app_theme.dart';
+import 'package:inspec_app/utils/observation_text_normalizer.dart';
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
@@ -307,11 +308,12 @@ class _ObservationScreenState extends State<ObservationScreen> {
           IconButton(
             icon: Icon(Icons.save),
             onPressed: () {
-              final texte = _texteController.text.trim();
-              if (texte.isEmpty) {
+              final rawTexte = _texteController.text.trim();
+              if (rawTexte.isEmpty) {
                 _showError('Veuillez saisir une observation');
                 return;
               }
+              final texte = ObservationTextNormalizer.normalize(rawTexte) ?? rawTexte;
               
               final observation = ObservationLibre(
                 texte: texte,
@@ -347,6 +349,7 @@ class _ObservationScreenState extends State<ObservationScreen> {
               SizedBox(height: 8),
               TextField(
                 controller: _texteController,
+                textCapitalization: TextCapitalization.sentences,
                 onChanged: (val) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Saisissez votre observation...',

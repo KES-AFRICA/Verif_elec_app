@@ -12,6 +12,7 @@ class VerificateurMapper {
       password: model.password,
       matricule: model.matricule,
       createdAt: model.createdAt,
+      updatedAt: model.updatedAt,
     );
   }
 
@@ -24,6 +25,7 @@ class VerificateurMapper {
       password: entity.password,
       matricule: entity.matricule,
       createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
     );
   }
 }

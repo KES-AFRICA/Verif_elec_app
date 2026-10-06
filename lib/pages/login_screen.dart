@@ -149,7 +149,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                         border: const OutlineInputBorder(),
-                        helperText: 'Min 8 caractères, 1 maj, 1 min, 1 chiffre, 1 spécial',
                       ),
                       validator: (v) {
                         if (v?.isEmpty ?? true) return 'Veuillez entrer votre mot de passe';

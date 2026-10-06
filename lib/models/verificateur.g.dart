@@ -23,14 +23,15 @@ class VerificateurAdapter extends TypeAdapter<Verificateur> {
       email: fields[3] as String,
       password: fields[4] as String,
       matricule: fields[5] as String,
-      createdAt: fields[6] as DateTime,
+      createdAt: (fields[6] as DateTime?) ?? DateTime.now(),
+      updatedAt: fields[7] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Verificateur obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class VerificateurAdapter extends TypeAdapter<Verificateur> {
       ..writeByte(5)
       ..write(obj.matricule)
       ..writeByte(6)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(7)
+      ..write(obj.updatedAt);
   }
 
   @override

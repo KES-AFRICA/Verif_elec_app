@@ -883,6 +883,7 @@ class BackupService {
         'parafoudres': c.parafoudres,
         'photos': c.photos,
         'calibreDisjoncteur': c.calibreDisjoncteur,
+        'celluleDepart': c.celluleDepart,
         'sectionCables': c.sectionCables,
         'sectionCablePhase': c.sectionCablePhase,
         'sectionCableNeutre': c.sectionCableNeutre,
@@ -918,6 +919,7 @@ class BackupService {
         'regimeNeutre': t.regimeNeutre,
         'photos': t.photos,
         'calibreDisjoncteur': t.calibreDisjoncteur,
+        'courantReglageDisjoncteur': t.courantReglageDisjoncteur,
         'sectionCables': t.sectionCables,
         'sectionCablePhase': t.sectionCablePhase,
         'sectionCableNeutre': t.sectionCableNeutre,
@@ -2456,18 +2458,17 @@ class BackupService {
 
     try {
       final mission = Mission.fromJson(targetMj);
-
       mission.verificateurs ??= [];
-      final dejaPresent = mission.verificateurs!
-          .any((v) => v['matricule'] == importeurMatricule);
-      if (!dejaPresent) {
-        mission.verificateurs!.add({
+      final rawVerifs = List<Map<String, dynamic>>.from(mission.verificateurs!);
+      if (importeurMatricule.isNotEmpty || importeurNom.isNotEmpty || importeurPrenom.isNotEmpty) {
+        rawVerifs.add({
           'matricule': importeurMatricule,
           'nom': importeurNom,
           'prenom': importeurPrenom,
           'role': 'importeur',
         });
       }
+      mission.verificateurs = IntervenantsService.deduplicateVerificateursList(rawVerifs);
 
       await box.put(targetMissionId, mission);
 
@@ -2805,6 +2806,7 @@ class BackupService {
       updatedAt: d['updatedAt'] != null ? _dt(d['updatedAt']) : null,
       gamme: d['gamme'] as String?,
       calibreDisjoncteur: d['calibreDisjoncteur'] as String?,
+      celluleDepart: d['celluleDepart'] as String?,
       sectionCables: legacySection ?? secPhase,
       sectionCablePhase: secPhase,
       sectionCableNeutre: secNeutre,
@@ -2837,6 +2839,7 @@ class BackupService {
       regimeNeutre: d['regimeNeutre'] as String? ?? '',
       photos: _strList(d['photos']),
       calibreDisjoncteur: d['calibreDisjoncteur'] as String?,
+      courantReglageDisjoncteur: d['courantReglageDisjoncteur'] as String?,
       sectionCables: legacySection ?? secPhase,
       sectionCablePhase: secPhase,
       sectionCableNeutre: secNeutre,

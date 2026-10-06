@@ -4,6 +4,7 @@ import 'package:inspec_app/models/mission.dart';
 import 'package:inspec_app/models/foudre.dart';
 import 'package:inspec_app/constants/app_theme.dart';
 import 'package:inspec_app/services/hive_service.dart';
+import 'package:inspec_app/utils/observation_text_normalizer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inspec_app/features/foudre/presentation/providers/foudre_provider.dart';
 import 'package:inspec_app/components/normative_search_suggestions_widget.dart';
@@ -46,7 +47,8 @@ class _AjouterFoudreScreenState extends ConsumerState<AjouterFoudreScreen> {
   Future<void> _sauvegarder() async {
     if (_formKey.currentState!.validate()) {
       try {
-        final observationTexte = _observationController.text.trim();
+        final rawTexte = _observationController.text.trim();
+        final observationTexte = ObservationTextNormalizer.normalize(rawTexte) ?? rawTexte;
         
         if (widget.isEdition) {
           // Mise à jour
@@ -213,6 +215,7 @@ class _AjouterFoudreScreenState extends ConsumerState<AjouterFoudreScreen> {
               // Champ observation
               TextFormField(
                 controller: _observationController,
+                textCapitalization: TextCapitalization.sentences,
                 onChanged: (val) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Décrivez l\'observation...',

@@ -7,6 +7,7 @@ class VerificateurEntity {
   final String password;
   final String matricule;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   const VerificateurEntity({
     required this.id,
@@ -16,6 +17,7 @@ class VerificateurEntity {
     required this.password,
     required this.matricule,
     required this.createdAt,
+    this.updatedAt,
   });
 
   String get fullName => '$prenom $nom';

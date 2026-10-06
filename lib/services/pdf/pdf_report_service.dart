@@ -795,12 +795,14 @@ class PdfReportService {
     List<ObservationLibre> obs,
     Map<String, int> trackedPages, {
     Map<String, int>? photoRegistry,
+    String? missionId,
   }) =>
       PdfAuditInstallationsBuilder.buildZone(
         zoneName,
         obs,
         trackedPages,
         photoRegistry: photoRegistry,
+        missionId: missionId,
       );
 
   static List<pw.Widget> _buildCoffret(
@@ -2448,7 +2450,7 @@ class PdfReportService {
       );
       final widgets = <pw.Widget>[];
       widgets.addAll(
-        _buildZone(zone.nom, zone.observationsLibres, trackedPages, photoRegistry: photoRegistry),
+        _buildZone(zone.nom, zone.observationsLibres, trackedPages, photoRegistry: photoRegistry, missionId: mission.id),
       );
       int elemIdx = 0;
       for (int i = 0; i < zone.locaux.length; i++) {
@@ -2521,7 +2523,7 @@ class PdfReportService {
       );
       final widgets = <pw.Widget>[];
       widgets.addAll(
-        _buildZone(zone.nom, zone.observationsLibres, trackedPages, photoRegistry: photoRegistry),
+        _buildZone(zone.nom, zone.observationsLibres, trackedPages, photoRegistry: photoRegistry, missionId: mission.id),
       );
       int elemIdx = 0;
       for (int i = 0; i < zone.coffretsDirects.length; i++) {

@@ -157,6 +157,7 @@ class NormativeReferenceService {
     "État, fixation et protection des jeux de barres": "NF C 15-100-1:2024 – art 523 et art 526",
     "Contrôle du courant dans le conducteur neutre": "NF C 15-100-1:2024 – art 524.2",
     "Dispositif de protection contre les surtensions (parafoudre)": "NF C 15-100-1:2024 – art 443 et art 534",
+    "Coordination du parafoudre avec les protections amont": "NF C 15-100-1:2024 – art 443 et art 534",
     "Coordination du parafoudre avec les protections amont et aval": "NF C 15-100-1:2024 – art 443 et art 534",
     "Présence de double alimentation électrique": "NF C 15-100-1:2024 – art 313, art 551 et art 537",
   };

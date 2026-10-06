@@ -40,6 +40,7 @@ class EquipmentTypeTransitionService {
     _normalizeKey("État, fixation et protection des jeux de barres"),
     _normalizeKey("Contrôle du courant dans le conducteur neutre"),
     _normalizeKey("Dispositif de protection contre les surtensions (parafoudre)"),
+    _normalizeKey("Coordination du parafoudre avec les protections amont"),
     _normalizeKey("Coordination du parafoudre avec les protections amont et aval"),
   };
 

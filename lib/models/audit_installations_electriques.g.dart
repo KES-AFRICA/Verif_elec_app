@@ -443,13 +443,14 @@ class CelluleAdapter extends TypeAdapter<Cellule> {
       sectionCableNeutre: fields[26] as String?,
       conducteursPhase: fields[27] as int?,
       conducteursNeutre: fields[28] as int?,
+      celluleDepart: fields[29] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Cellule obj) {
     writer
-      ..writeByte(29)
+      ..writeByte(30)
       ..writeByte(0)
       ..write(obj.fonction)
       ..writeByte(1)
@@ -507,7 +508,9 @@ class CelluleAdapter extends TypeAdapter<Cellule> {
       ..writeByte(27)
       ..write(obj.conducteursPhase)
       ..writeByte(28)
-      ..write(obj.conducteursNeutre);
+      ..write(obj.conducteursNeutre)
+      ..writeByte(29)
+      ..write(obj.celluleDepart);
   }
 
   @override
@@ -564,13 +567,14 @@ class TransformateurMTBTAdapter extends TypeAdapter<TransformateurMTBT> {
       sectionCableNeutre: fields[29] as String?,
       conducteursPhase: fields[30] as int?,
       conducteursNeutre: fields[31] as int?,
+      courantReglageDisjoncteur: fields[32] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TransformateurMTBT obj) {
     writer
-      ..writeByte(32)
+      ..writeByte(33)
       ..writeByte(0)
       ..write(obj.typeTransformateur)
       ..writeByte(1)
@@ -634,7 +638,9 @@ class TransformateurMTBTAdapter extends TypeAdapter<TransformateurMTBT> {
       ..writeByte(30)
       ..write(obj.conducteursPhase)
       ..writeByte(31)
-      ..write(obj.conducteursNeutre);
+      ..write(obj.conducteursNeutre)
+      ..writeByte(32)
+      ..write(obj.courantReglageDisjoncteur);
   }
 
   @override

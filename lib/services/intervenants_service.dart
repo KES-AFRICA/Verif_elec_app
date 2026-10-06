@@ -6,19 +6,73 @@ import 'package:inspec_app/models/mission.dart';
 import 'package:inspec_app/models/renseignements_generaux.dart';
 import 'package:inspec_app/services/hive_service.dart';
 
-/// Service centralisé assurant que la JSA est la Source de Vérité Unique (SSOT)
-/// pour l'ensemble des intervenants / inspecteurs d'une mission.
+/// Service centralisé assurant que la Mission (`mission.verificateurs`) est la
+/// Source de Vérité Unique (SSOT) pour l'ensemble des vérificateurs / inspecteurs.
 /// 
 /// Garantit :
+/// - `Mission.verificateurs` comme SSOT absolu, propageant vers la JSA et les Renseignements Généraux.
+/// - Déduplication stricte par matricule ou couple (nom + prénom).
 /// - Enrôlement automatique et idempotent de l'utilisateur courant.
-/// - Préservation intégrale des inspecteurs lors des cycles export / import.
-/// - Migration transparente et non destructive des missions historiques (legacy).
-/// - Synchronisation unidirectionnelle JSA -> mission.verificateurs / rg.verificateurs
-///   pour rétrocompatibilité totale avec les composants d'interface existants.
+/// - Préservation intégrale et survie lors des cycles export / import.
+/// - Rétrocompatibilité totale avec les composants d'interface et d'édition existants.
 class IntervenantsService {
+  /// Déduplique de façon robuste et déterministe une liste brute de vérificateurs.
+  static List<Map<String, dynamic>> deduplicateVerificateursList(List<dynamic> rawList) {
+    final result = <Map<String, dynamic>>[];
+    for (final item in rawList) {
+      if (item is! Map) continue;
+      final m = Map<String, dynamic>.from(item);
+      final nom = (m['nom'] ?? '').toString().trim();
+      final prenom = (m['prenom'] ?? '').toString().trim();
+      final matricule = (m['matricule'] ?? '').toString().trim();
+      if (nom.isEmpty && prenom.isEmpty && matricule.isEmpty) continue;
+
+      final existingIndex = result.indexWhere((existing) {
+        final exMat = (existing['matricule'] ?? '').toString().trim();
+        if (matricule.isNotEmpty && exMat.isNotEmpty && matricule.toLowerCase() == exMat.toLowerCase()) {
+          return true;
+        }
+        final exNom = (existing['nom'] ?? '').toString().trim().toLowerCase();
+        final exPrenom = (existing['prenom'] ?? '').toString().trim().toLowerCase();
+        return nom.toLowerCase() == exNom && prenom.toLowerCase() == exPrenom;
+      });
+
+      if (existingIndex >= 0) {
+        // Enrichir le matricule, rôle ou email si manquant
+        if (matricule.isNotEmpty &&
+            (result[existingIndex]['matricule'] == null ||
+             result[existingIndex]['matricule'].toString().trim().isEmpty)) {
+          result[existingIndex]['matricule'] = matricule;
+        }
+        final email = (m['email'] ?? '').toString().trim();
+        if (email.isNotEmpty &&
+            (result[existingIndex]['email'] == null ||
+             result[existingIndex]['email'].toString().trim().isEmpty)) {
+          result[existingIndex]['email'] = email;
+        }
+        final role = (m['role'] ?? '').toString().trim();
+        if (role.isNotEmpty &&
+            (result[existingIndex]['role'] == null ||
+             result[existingIndex]['role'].toString().trim().isEmpty ||
+             result[existingIndex]['role'] == 'Inspecteur')) {
+          result[existingIndex]['role'] = role;
+        }
+      } else {
+        result.add({
+          'nom': nom,
+          'prenom': prenom,
+          'matricule': matricule,
+          'role': (m['role'] ?? m['fonction'] ?? 'Inspecteur').toString().trim(),
+          'email': (m['email'] ?? '').toString().trim(),
+        });
+      }
+    }
+    return result;
+  }
+
   /// S'assure que l'utilisateur courant (ou les données transmises en repli)
-  /// est inscrit dans la JSA de la mission de façon strictement idempotente.
-  static Future<void> ensureCurrentUserInJSA(
+  /// est inscrit dans la Mission (SSOT) de façon strictement idempotente et dédupliquée.
+  static Future<void> ensureCurrentUserInMission(
     String missionId, {
     String? fallbackMatricule,
     String? fallbackNom,
@@ -44,81 +98,96 @@ class IntervenantsService {
         matricule = fallbackMatricule.trim();
       }
 
-      // Si aucune identité n'est disponible, rien à enrôler
+      // Si aucune identité n'est disponible, rien à inscrire
       if (nom.isEmpty && prenom.isEmpty && (matricule == null || matricule.isEmpty)) {
         return;
       }
 
-      // 1. Récupérer ou initialiser la JSA
-      var jsa = HiveService.getJSAByMissionId(missionId);
-      bool isNewJsa = false;
-      if (jsa == null) {
-        jsa = await HiveService.getOrCreateJSA(missionId);
-        isNewJsa = true;
+      final mission = HiveService.getMissionById(missionId);
+      if (mission != null) {
+        mission.verificateurs ??= [];
+        final rawList = List<Map<String, dynamic>>.from(mission.verificateurs!);
+        rawList.add({
+          'nom': nom,
+          'prenom': prenom,
+          'matricule': matricule ?? '',
+          'email': email ?? '',
+          'role': role,
+        });
+
+        mission.verificateurs = deduplicateVerificateursList(rawList);
+        await mission.save();
+
+        // Propager unilatéralement du SSOT (Mission) vers JSA et RG
+        await syncMissionVerificateursToJsaAndRg(missionId, mission: mission);
       }
-
-      bool jsaModified = false;
-
-      // 2. Migration automatique à chaud des missions historiques si la JSA est vierge
-      if (jsa.inspecteurs.isEmpty) {
-        final mission = HiveService.getMissionById(missionId);
-        final rg = HiveService.getRenseignementsGenerauxByMissionId(missionId);
-        final migratedCount = syncLegacyInspectorsToJSA(jsa, mission, rg);
-        if (migratedCount > 0) {
-          jsaModified = true;
-        }
-      }
-
-      // 3. Enrôler l'utilisateur courant s'il est absent (idempotent)
-      final added = JSAUtils.addInspectorIfAbsent(
-        jsa.inspecteurs,
-        nom,
-        prenom,
-        matricule: matricule,
-        email: email,
-        role: role,
-      );
-
-      if (added || isNewJsa || jsaModified) {
-        await HiveService.saveJSA(jsa);
-      }
-
-      // 4. Maintien de la cohérence pour les composants legacy
-      await _syncLegacyFieldsWithJsa(missionId, jsa.inspecteurs);
     } catch (e, st) {
       if (kDebugMode) {
-        print('⚠️ IntervenantsService.ensureCurrentUserInJSA error: $e\n$st');
+        print('⚠️ IntervenantsService.ensureCurrentUserInMission error: $e\n$st');
       }
     }
   }
 
-  /// Récupère la liste des intervenants JSA pour une mission.
-  /// Si la JSA est vide ou absente, résout automatiquement depuis les sources
-  /// historiques ou l'utilisateur connecté sans altérer les données.
+  /// Alias de rétrocompatibilité : assure la présence de l'utilisateur dans la Mission (SSOT)
+  /// et propage vers la JSA.
+  static Future<void> ensureCurrentUserInJSA(
+    String missionId, {
+    String? fallbackMatricule,
+    String? fallbackNom,
+    String? fallbackPrenom,
+  }) async {
+    await ensureCurrentUserInMission(
+      missionId,
+      fallbackMatricule: fallbackMatricule,
+      fallbackNom: fallbackNom,
+      fallbackPrenom: fallbackPrenom,
+    );
+  }
+
+  /// Récupère la liste des intervenants pour une mission.
+  /// Priorité absolue : Mission (SSOT).
+  /// Fallbacks résilients : RG -> JSA -> CurrentUser.
   static List<JSAInspecteur> getMissionIntervenants(
     String missionId, {
     Mission? mission,
     RenseignementsGeneraux? rg,
     JSA? jsa,
   }) {
-    // 1. Vérifier la JSA fournie ou en cache Hive
-    final effectiveJsa = jsa ?? HiveService.getJSAByMissionId(missionId);
-    if (effectiveJsa != null && effectiveJsa.inspecteurs.isNotEmpty) {
-      return List<JSAInspecteur>.from(effectiveJsa.inspecteurs);
-    }
-
-    // 2. Fallback de migration à chaud pour anciennes missions
     final effectiveMission = mission ?? HiveService.getMissionById(missionId);
-    final effectiveRg = rg ?? HiveService.getRenseignementsGenerauxByMissionId(missionId);
     final fallbackList = <JSAInspecteur>[];
 
-    // Depuis mission.verificateurs
+    // 1. Priorité absolue : Mission.verificateurs (SSOT)
     if (effectiveMission?.verificateurs != null && effectiveMission!.verificateurs!.isNotEmpty) {
-      for (final v in effectiveMission.verificateurs!) {
+      final deduplicated = deduplicateVerificateursList(effectiveMission.verificateurs!);
+      for (final v in deduplicated) {
         final vNom = (v['nom'] ?? '').toString().trim();
         final vPrenom = (v['prenom'] ?? '').toString().trim();
         final vMatricule = (v['matricule'] ?? '').toString().trim();
         final vRole = (v['role'] ?? 'Inspecteur').toString().trim();
+        final vEmail = (v['email'] ?? '').toString().trim();
+        JSAUtils.addInspectorIfAbsent(
+          fallbackList,
+          vNom,
+          vPrenom,
+          matricule: vMatricule.isNotEmpty ? vMatricule : null,
+          role: vRole.isNotEmpty ? vRole : null,
+          email: vEmail.isNotEmpty ? vEmail : null,
+        );
+      }
+      if (fallbackList.isNotEmpty) {
+        return fallbackList;
+      }
+    }
+
+    // 2. Fallback RG
+    final effectiveRg = rg ?? HiveService.getRenseignementsGenerauxByMissionId(missionId);
+    if (effectiveRg != null && effectiveRg.verificateurs.isNotEmpty) {
+      final deduplicatedRg = deduplicateVerificateursList(effectiveRg.verificateurs);
+      for (final v in deduplicatedRg) {
+        final vNom = (v['nom'] ?? '').toString().trim();
+        final vPrenom = (v['prenom'] ?? '').toString().trim();
+        final vRole = (v['fonction'] ?? v['role'] ?? 'Inspecteur').toString().trim();
+        final vMatricule = (v['matricule'] ?? '').toString().trim();
         JSAUtils.addInspectorIfAbsent(
           fallbackList,
           vNom,
@@ -127,42 +196,45 @@ class IntervenantsService {
           role: vRole.isNotEmpty ? vRole : null,
         );
       }
+      if (fallbackList.isNotEmpty) {
+        return fallbackList;
+      }
     }
 
-    // Depuis rg.verificateurs
-    if (effectiveRg != null && effectiveRg.verificateurs.isNotEmpty) {
-      for (final v in effectiveRg.verificateurs) {
-        final vNom = (v['nom'] ?? '').toString().trim();
-        final vPrenom = (v['prenom'] ?? '').toString().trim();
-        final vFonction = (v['fonction'] ?? 'Inspecteur').toString().trim();
+    // 3. Fallback JSA
+    final effectiveJsa = jsa ?? HiveService.getJSAByMissionId(missionId);
+    if (effectiveJsa != null && effectiveJsa.inspecteurs.isNotEmpty) {
+      for (final insp in effectiveJsa.inspecteurs) {
         JSAUtils.addInspectorIfAbsent(
           fallbackList,
-          vNom,
-          vPrenom,
-          role: vFonction.isNotEmpty ? vFonction : null,
+          insp.nom,
+          insp.prenom,
+          matricule: insp.matricule,
+          email: insp.email,
+          role: insp.role,
         );
+      }
+      if (fallbackList.isNotEmpty) {
+        return fallbackList;
       }
     }
 
-    // Depuis l'utilisateur courant si toujours vide
-    if (fallbackList.isEmpty) {
-      final currentUser = HiveService.getCurrentUser();
-      if (currentUser != null && (currentUser.nom.isNotEmpty || currentUser.prenom.isNotEmpty)) {
-        fallbackList.add(JSAInspecteur(
-          nom: currentUser.nom.trim(),
-          prenom: currentUser.prenom.trim(),
-          matricule: currentUser.matricule.trim().isNotEmpty ? currentUser.matricule.trim() : null,
-          email: currentUser.email.trim().isNotEmpty ? currentUser.email.trim() : null,
-          role: 'Inspecteur',
-        ));
-      }
+    // 4. Fallback CurrentUser
+    final currentUser = HiveService.getCurrentUser();
+    if (currentUser != null && (currentUser.nom.isNotEmpty || currentUser.prenom.isNotEmpty)) {
+      fallbackList.add(JSAInspecteur(
+        nom: currentUser.nom.trim(),
+        prenom: currentUser.prenom.trim(),
+        matricule: currentUser.matricule.trim().isNotEmpty ? currentUser.matricule.trim() : null,
+        email: currentUser.email.trim().isNotEmpty ? currentUser.email.trim() : null,
+        role: 'Inspecteur',
+      ));
     }
 
     return fallbackList;
   }
 
-  /// Retourne la liste des noms formatés des intervenants pour les rapports
-  /// (ex: `['JEAN DUPONT', 'PIERRE MARTIN']`).
+  /// Retourne la liste des noms formatés des intervenants pour les rapports (dédupliqués).
   static List<String> getMissionIntervenantsNoms(
     String missionId, {
     Mission? mission,
@@ -194,16 +266,94 @@ class IntervenantsService {
     return noms;
   }
 
-  /// Migre les intervenants legacy depuis `mission.verificateurs` et `rg.verificateurs`
-  /// vers la JSA sans créer de doublon. Retourne le nombre d'inspecteurs ajoutés.
+  /// Synchronise unilatéralement du SSOT (`Mission.verificateurs`) vers la JSA et les Renseignements Généraux.
+  static Future<void> syncMissionVerificateursToJsaAndRg(
+    String missionId, {
+    Mission? mission,
+  }) async {
+    try {
+      final effectiveMission = mission ?? HiveService.getMissionById(missionId);
+      if (effectiveMission == null) return;
+
+      // Récupérer et dédupliquer les vérificateurs de la mission
+      var verifs = effectiveMission.verificateurs != null
+          ? deduplicateVerificateursList(effectiveMission.verificateurs!)
+          : <Map<String, dynamic>>[];
+
+      // Si la mission n'en a pas encore, tenter de migrer depuis JSA ou RG pour amorcer le SSOT
+      if (verifs.isEmpty) {
+        final jsa = HiveService.getJSAByMissionId(missionId);
+        final rg = HiveService.getRenseignementsGenerauxByMissionId(missionId);
+        final fallbackInspectors = getMissionIntervenants(
+          missionId,
+          mission: effectiveMission,
+          rg: rg,
+          jsa: jsa,
+        );
+        if (fallbackInspectors.isNotEmpty) {
+          verifs = fallbackInspectors.map((i) => {
+            'nom': i.nom,
+            'prenom': i.prenom,
+            'matricule': i.matricule ?? '',
+            'role': i.role ?? 'Inspecteur',
+            'email': i.email ?? '',
+          }).toList();
+          effectiveMission.verificateurs = verifs;
+          await effectiveMission.save();
+        }
+      }
+
+      if (verifs.isEmpty) return;
+
+      // 1. Synchroniser JSA
+      var jsa = HiveService.getJSAByMissionId(missionId);
+      if (jsa == null) {
+        jsa = await HiveService.getOrCreateJSA(missionId);
+      }
+      bool jsaChanged = false;
+      for (final v in verifs) {
+        final added = JSAUtils.addInspectorIfAbsent(
+          jsa.inspecteurs,
+          v['nom'] ?? '',
+          v['prenom'] ?? '',
+          matricule: (v['matricule'] != null && v['matricule'].toString().isNotEmpty) ? v['matricule'] : null,
+          role: (v['role'] != null && v['role'].toString().isNotEmpty) ? v['role'] : null,
+          email: (v['email'] != null && v['email'].toString().isNotEmpty) ? v['email'] : null,
+        );
+        if (added) jsaChanged = true;
+      }
+      if (jsaChanged) {
+        await HiveService.saveJSA(jsa);
+      }
+
+      // 2. Synchroniser RenseignementsGeneraux
+      if (Hive.isBoxOpen('renseignements_generaux')) {
+        final rgBox = Hive.box<RenseignementsGeneraux>('renseignements_generaux');
+        final rg = rgBox.values.cast<RenseignementsGeneraux?>().firstWhere(
+          (r) => r?.missionId == missionId,
+          orElse: () => null,
+        );
+        if (rg != null) {
+          rg.verificateurs = verifs
+              .map((v) => v.map((k, val) => MapEntry(k, val?.toString() ?? '')))
+              .toList();
+          await rg.save();
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ syncMissionVerificateursToJsaAndRg error: $e');
+      }
+    }
+  }
+
+  /// Migre les intervenants legacy vers la JSA (méthode de transition)
   static int syncLegacyInspectorsToJSA(
     JSA jsa,
     Mission? mission,
     RenseignementsGeneraux? rg,
   ) {
     int addedCount = 0;
-
-    // A. Depuis mission.verificateurs
     if (mission?.verificateurs != null && mission!.verificateurs!.isNotEmpty) {
       for (final v in mission.verificateurs!) {
         final vNom = (v['nom'] ?? '').toString().trim();
@@ -220,8 +370,6 @@ class IntervenantsService {
         if (added) addedCount++;
       }
     }
-
-    // B. Depuis rg.verificateurs
     if (rg != null && rg.verificateurs.isNotEmpty) {
       for (final v in rg.verificateurs) {
         final vNom = (v['nom'] ?? '').toString().trim();
@@ -236,51 +384,6 @@ class IntervenantsService {
         if (added) addedCount++;
       }
     }
-
     return addedCount;
-  }
-
-  /// Synchronise en tâche de fond `mission.verificateurs` et `rg.verificateurs`
-  /// à partir de la liste des inspecteurs JSA pour assurer la rétrocompatibilité.
-  static Future<void> _syncLegacyFieldsWithJsa(
-    String missionId,
-    List<JSAInspecteur> inspecteurs,
-  ) async {
-    try {
-      final syncList = inspecteurs.map((i) => {
-        'nom': i.nom,
-        'prenom': i.prenom,
-        'matricule': i.matricule ?? '',
-        'role': i.role ?? 'Inspecteur',
-        'email': i.email ?? '',
-      }).toList();
-
-      // Synchroniser Mission
-      if (Hive.isBoxOpen('missions')) {
-        final missionBox = Hive.box<Mission>('missions');
-        final mission = missionBox.get(missionId);
-        if (mission != null) {
-          mission.verificateurs = syncList;
-          await mission.save();
-        }
-      }
-
-      // Synchroniser RenseignementsGeneraux
-      if (Hive.isBoxOpen('renseignements_generaux')) {
-        final rgBox = Hive.box<RenseignementsGeneraux>('renseignements_generaux');
-        final rg = rgBox.values.cast<RenseignementsGeneraux?>().firstWhere(
-          (r) => r?.missionId == missionId,
-          orElse: () => null,
-        );
-        if (rg != null) {
-          rg.verificateurs = syncList;
-          await rg.save();
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('⚠️ _syncLegacyFieldsWithJsa silent error: $e');
-      }
-    }
   }
 }

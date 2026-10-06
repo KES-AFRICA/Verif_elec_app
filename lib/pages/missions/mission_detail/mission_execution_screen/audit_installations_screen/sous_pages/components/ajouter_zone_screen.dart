@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:inspec_app/components/safe_file_image.dart';
 import 'package:inspec_app/components/normative_search_suggestions_widget.dart';
+import 'package:inspec_app/utils/observation_text_normalizer.dart';
 
 class AjouterZoneScreen extends StatefulWidget {
   final Mission mission;
@@ -732,6 +733,7 @@ class _AjouterZoneScreenState extends State<AjouterZoneScreen> {
                     ),
                     child: TextFormField(
                       controller: _observationController,
+                      textCapitalization: TextCapitalization.sentences,
                       onChanged: (val) => setState(() {}),
                       decoration: InputDecoration(
                         labelText: 'Observation',
@@ -834,11 +836,12 @@ class _AjouterZoneScreenState extends State<AjouterZoneScreen> {
   }
 
   void _ajouterObservation() {
-    final texte = _observationController.text.trim();
-    if (texte.isEmpty) {
+    final rawTexte = _observationController.text.trim();
+    if (rawTexte.isEmpty) {
       _showError('Veuillez saisir une observation');
       return;
     }
+    final texte = ObservationTextNormalizer.normalize(rawTexte) ?? rawTexte;
 
     setState(() {
       _observationsExistantes.add(ObservationLibre(

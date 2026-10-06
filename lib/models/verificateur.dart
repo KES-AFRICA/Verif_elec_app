@@ -26,6 +26,9 @@ class Verificateur extends HiveObject {
   @HiveField(6)
   DateTime createdAt;
 
+  @HiveField(7)
+  DateTime? updatedAt;
+
   Verificateur({
     required this.id,
     required this.nom,
@@ -34,6 +37,7 @@ class Verificateur extends HiveObject {
     required this.password,
     required this.matricule,
     required this.createdAt,
+    this.updatedAt,
   });
 
   factory Verificateur.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,9 @@ class Verificateur extends HiveObject {
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']) 
           : DateTime.now(),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at']) 
+          : null,
     );
   }
 
@@ -59,7 +66,30 @@ class Verificateur extends HiveObject {
       'password': password,
       'matricule': matricule,
       'created_at': createdAt.toIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
+  }
+
+  Verificateur copyWith({
+    String? id,
+    String? nom,
+    String? prenom,
+    String? email,
+    String? password,
+    String? matricule,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Verificateur(
+      id: id ?? this.id,
+      nom: nom ?? this.nom,
+      prenom: prenom ?? this.prenom,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      matricule: matricule ?? this.matricule,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 
   String get fullName => '$prenom $nom';

@@ -26,6 +26,7 @@ import 'persistence_queue.dart';
 import 'package:inspec_app/features/backup/data/services/mission_activity_tracker.dart';
 import '../utils/normative_reference_cleaner.dart';
 import 'intervenants_service.dart';
+import '../utils/observation_text_normalizer.dart';
 
 class HiveService {
   static const String _verificateurBox = 'verificateurs';
@@ -6709,10 +6710,11 @@ static Future<bool> addObservationToMoyenneTensionLocal({
 }) async {
   try {
     final audit = await getOrCreateAuditInstallations(missionId);
+    final normalizedTexte = ObservationTextNormalizer.normalize(texte) ?? texte;
     if (localIndex < audit.moyenneTensionLocaux.length) {
       final local = audit.moyenneTensionLocaux[localIndex];
       local.observationsLibres.add(ObservationLibre(
-        texte: texte,
+        texte: normalizedTexte,
         photos: photos ?? [],
       ));
       await saveAuditInstallations(audit);
@@ -6739,10 +6741,11 @@ static Future<bool> addObservationToMoyenneTensionZone({
 }) async {
   try {
     final audit = await getOrCreateAuditInstallations(missionId);
+    final normalizedTexte = ObservationTextNormalizer.normalize(texte) ?? texte;
     if (zoneIndex < audit.moyenneTensionZones.length) {
       final zone = audit.moyenneTensionZones[zoneIndex];
       zone.observationsLibres.add(ObservationLibre(
-        texte: texte,
+        texte: normalizedTexte,
         photos: photos ?? [],
       ));
       await saveAuditInstallations(audit);
@@ -6769,10 +6772,11 @@ static Future<bool> addObservationToBasseTensionZone({
 }) async {
   try {
     final audit = await getOrCreateAuditInstallations(missionId);
+    final normalizedTexte = ObservationTextNormalizer.normalize(texte) ?? texte;
     if (zoneIndex < audit.basseTensionZones.length) {
       final zone = audit.basseTensionZones[zoneIndex];
       zone.observationsLibres.add(ObservationLibre(
-        texte: texte,
+        texte: normalizedTexte,
         photos: photos ?? [],
       ));
       await saveAuditInstallations(audit);
@@ -6800,12 +6804,13 @@ static Future<bool> addObservationToBasseTensionLocal({
 }) async {
   try {
     final audit = await getOrCreateAuditInstallations(missionId);
+    final normalizedTexte = ObservationTextNormalizer.normalize(texte) ?? texte;
     if (zoneIndex < audit.basseTensionZones.length) {
       final zone = audit.basseTensionZones[zoneIndex];
       if (localIndex < zone.locaux.length) {
         final local = zone.locaux[localIndex];
         local.observationsLibres.add(ObservationLibre(
-          texte: texte,
+          texte: normalizedTexte,
           photos: photos ?? [],
         ));
         await saveAuditInstallations(audit);
@@ -6834,6 +6839,7 @@ static Future<bool> addObservationToCoffret({
   try {
     // Chercher le coffret dans l'audit
     final audit = await getOrCreateAuditInstallations(missionId);
+    final normalizedTexte = ObservationTextNormalizer.normalize(texte) ?? texte;
     bool found = false;
     
     // Chercher dans les locaux MT
@@ -6841,7 +6847,7 @@ static Future<bool> addObservationToCoffret({
       final index = local.coffrets.indexWhere((c) => c.equipmentId == coffret.equipmentId || (c.nom == coffret.nom && c.type == coffret.type));
       if (index != -1) {
         local.coffrets[index].observationsLibres.add(ObservationLibre(
-          texte: texte,
+          texte: normalizedTexte,
           photos: photos ?? [],
         ));
         found = true;
@@ -6855,7 +6861,7 @@ static Future<bool> addObservationToCoffret({
         final index = zone.coffrets.indexWhere((c) => c.equipmentId == coffret.equipmentId || (c.nom == coffret.nom && c.type == coffret.type));
         if (index != -1) {
           zone.coffrets[index].observationsLibres.add(ObservationLibre(
-            texte: texte,
+            texte: normalizedTexte,
             photos: photos ?? [],
           ));
           found = true;
@@ -6870,7 +6876,7 @@ static Future<bool> addObservationToCoffret({
         final index = zone.coffretsDirects.indexWhere((c) => c.equipmentId == coffret.equipmentId || (c.nom == coffret.nom && c.type == coffret.type));
         if (index != -1) {
           zone.coffretsDirects[index].observationsLibres.add(ObservationLibre(
-            texte: texte,
+            texte: normalizedTexte,
             photos: photos ?? [],
           ));
           found = true;
@@ -6882,7 +6888,7 @@ static Future<bool> addObservationToCoffret({
           final index = local.coffrets.indexWhere((c) => c.equipmentId == coffret.equipmentId || (c.nom == coffret.nom && c.type == coffret.type));
           if (index != -1) {
             local.coffrets[index].observationsLibres.add(ObservationLibre(
-              texte: texte,
+              texte: normalizedTexte,
               photos: photos ?? [],
             ));
             found = true;
@@ -9044,6 +9050,7 @@ static Future<bool> updateUserPassword({
     }
 
     user.password = ''; // vider l'éventuel ancien mot de passe en clair
+    user.updatedAt = DateTime.now();
     await user.save();
 
     // Réinitialiser les compteurs de sécurité (lockout, tentatives échouées)
@@ -9101,6 +9108,7 @@ static Future<bool> updateUserPassword({
         password: '', // Le mot de passe n'est plus stocké ici !
         matricule: matricule.toUpperCase(),
         createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
       
       // Sauvegarder l'utilisateur dans la box

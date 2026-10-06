@@ -1531,13 +1531,12 @@ class DispositionsConstructivesRegistry {
     "Présence et fonctionnement des dispositifs de protection",
     "Adéquation des dispositifs de protection",
     "Section des câbles d'alimentation adaptée au courant nominal des dispositifs de protection associés",
-    "Section des câbles de départs adaptée au courant nominal des dispositifs de protection associés",
     "Coordination entre dispositifs de protection et contacteurs",
     "Coordination entre dispositifs de protection",
     "Protection contre les contacts indirects",
     "Sélectivité des protections (montée sélective des calibres)",
     "Dispositif de protection contre les surtensions (parafoudre)",
-    "Coordination du parafoudre avec les protections amont et aval",
+    "Coordination du parafoudre avec les protections amont",
     "Présence de double alimentation électrique",
   ];
 
@@ -1744,6 +1743,12 @@ class DispositionsConstructivesRegistry {
           familleRisque: "Surtension / foudre / détérioration des équipements",
           criticite: "Majeure",
         ),
+    "Coordination du parafoudre avec les protections amont":
+        DispositionMetadata(
+          referenceNormative: "NF C 15-100-1:2024 – art 443 et art 534",
+          familleRisque: "Surtension / foudre / détérioration des équipements",
+          criticite: "Majeure",
+        ),
     "Coordination du parafoudre avec les protections amont et aval":
         DispositionMetadata(
           referenceNormative: "NF C 15-100-1:2024 – art 443 et art 534",
@@ -1833,6 +1838,9 @@ class DispositionsConstructivesRegistry {
         "Dispositif de protection contre les surtensions (parafoudre)",
     _normalizeKey("Présence d'un parafoudre"):
         "Dispositif de protection contre les surtensions (parafoudre)",
+    _normalizeKey(
+      "Coordination du parafoudre avec les protections amont et aval",
+    ): "Coordination du parafoudre avec les protections amont",
   };
 
   /// Obtenir la métadonnée normative pour un point de coffret ou d'inverseur

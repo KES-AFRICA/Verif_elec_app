@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:inspec_app/models/audit_installations_electriques.dart';
 import 'package:inspec_app/models/classement_locaux.dart';
+import 'package:inspec_app/models/classement_zone.dart';
 import 'package:inspec_app/services/hive_service.dart';
 
 class IpIkEvaluationResult {
@@ -294,6 +295,33 @@ class IpIkEvaluatorService {
     return false;
   }
 
+  /// Résout l'indice IP/IK propre à une Zone (depuis ClassementZone ou fallback ClassementEmplacement)
+  static ParsedIpIk resolveZoneIpIk(String missionId, String zoneNom) {
+    if (zoneNom.trim().isEmpty) return const ParsedIpIk(ip: null, ik: null);
+    try {
+      final cz = HiveService.getClassementZoneByNom(missionId, zoneNom);
+      if (cz != null) {
+        final ip = (cz.ip != null && cz.ip!.trim().isNotEmpty) ? cz.ip!.trim() : null;
+        final ik = (cz.ik != null && cz.ik!.trim().isNotEmpty) ? cz.ik!.trim() : null;
+        if (ip != null || ik != null) {
+          return ParsedIpIk.parse('${ip ?? ''} ${ik ?? ''}');
+        }
+      }
+
+      final emp = HiveService.getEmplacementByNom(missionId, zoneNom);
+      if (emp != null) {
+        final ip = (emp.ipEffective != null && emp.ipEffective!.trim().isNotEmpty) ? emp.ipEffective!.trim() : null;
+        final ik = (emp.ikEffective != null && emp.ikEffective!.trim().isNotEmpty) ? emp.ikEffective!.trim() : null;
+        if (ip != null || ik != null) {
+          return ParsedIpIk.parse('${ip ?? ''} ${ik ?? ''}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('❌ Erreur resolveZoneIpIk: $e');
+    }
+    return const ParsedIpIk(ip: null, ik: null);
+  }
+
   /// Résout l'indice IP/IK attendu du repère réel de l'équipement (Local ou Zone)
   static ParsedIpIk resolveRepereIpIk({
     required String missionId,
@@ -332,44 +360,42 @@ class IpIkEvaluatorService {
       return const ParsedIpIk(ip: null, ik: null);
     }
 
-    ClassementEmplacement? emplacement;
-
     // Priorité 1 : trouver un candidat ayant un classement IP ou IK renseigné
+    // en vérifiant à la fois dans les Locaux (ClassementEmplacement) et les Zones (ClassementZone)
     for (final candidate in candidates) {
       try {
         final found = HiveService.getEmplacementByNom(missionId, candidate);
         if (found != null &&
             ((found.ipEffective != null && found.ipEffective!.trim().isNotEmpty) ||
              (found.ikEffective != null && found.ikEffective!.trim().isNotEmpty))) {
-          emplacement = found;
-          break;
+          return ParsedIpIk.parse('${found.ipEffective ?? ''} ${found.ikEffective ?? ''}');
+        }
+
+        final foundZone = HiveService.getClassementZoneByNom(missionId, candidate);
+        if (foundZone != null &&
+            ((foundZone.ip != null && foundZone.ip!.trim().isNotEmpty) ||
+             (foundZone.ik != null && foundZone.ik!.trim().isNotEmpty))) {
+          return ParsedIpIk.parse('${foundZone.ip ?? ''} ${foundZone.ik ?? ''}');
         }
       } catch (_) {}
     }
 
     // Priorité 2 : si aucun n'a d'IP/IK effectif, prendre le premier emplacement existant
-    if (emplacement == null) {
-      for (final candidate in candidates) {
-        try {
-          final found = HiveService.getEmplacementByNom(missionId, candidate);
-          if (found != null) {
-            emplacement = found;
-            break;
-          }
-        } catch (_) {}
-      }
+    for (final candidate in candidates) {
+      try {
+        final found = HiveService.getEmplacementByNom(missionId, candidate);
+        if (found != null) {
+          return ParsedIpIk.parse('${found.ipEffective ?? ''} ${found.ikEffective ?? ''}');
+        }
+
+        final foundZone = HiveService.getClassementZoneByNom(missionId, candidate);
+        if (foundZone != null) {
+          return ParsedIpIk.parse('${foundZone.ip ?? ''} ${foundZone.ik ?? ''}');
+        }
+      } catch (_) {}
     }
 
-    if (emplacement == null) {
-      return const ParsedIpIk(ip: null, ik: null);
-    }
-
-    final String? repereIpRaw = emplacement.ipEffective;
-    final String? repereIkRaw = emplacement.ikEffective;
-
-    return ParsedIpIk.parse(
-      '${repereIpRaw ?? ''} ${repereIkRaw ?? ''}',
-    );
+    return const ParsedIpIk(ip: null, ik: null);
   }
 
   /// Retrouve le nom de l'emplacement (Local ou Zone) où est situé le coffret

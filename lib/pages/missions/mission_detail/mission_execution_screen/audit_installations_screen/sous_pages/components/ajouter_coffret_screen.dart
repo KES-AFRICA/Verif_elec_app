@@ -28,6 +28,7 @@ import 'package:inspec_app/components/safe_file_image.dart';
 import 'package:inspec_app/components/normative_search_suggestions_widget.dart';
 import 'package:inspec_app/services/normative_search_service.dart';
 import 'package:inspec_app/services/equipment_source_search_service.dart';
+import 'package:inspec_app/utils/observation_text_normalizer.dart';
 import 'package:inspec_app/services/ip_ik_evaluator_service.dart';
 import 'package:inspec_app/services/equipment_type_transition_service.dart';
 import 'package:inspec_app/services/document_generation/essai_declenchement_helper.dart';
@@ -818,6 +819,7 @@ class _EtapeInformationsBaseState extends State<_EtapeInformationsBase> {
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(context.spacingS), border: Border.all(color: Colors.grey.shade200)),
                   child: TextFormField(
                     controller: widget.observationController,
+                    textCapitalization: TextCapitalization.sentences,
                     style: TextStyle(fontSize: context.fontSizeS),
                     onChanged: (val) => setState(() {}),
                     decoration: InputDecoration(
@@ -5000,8 +5002,9 @@ class _AjouterCoffretScreenState extends ConsumerState<AjouterCoffretScreen> {
     String? famille,
     String? crit,
   ]) {
-    final texte = _observationController.text.trim();
-    if (texte.isEmpty) return;
+    final rawTexte = _observationController.text.trim();
+    if (rawTexte.isEmpty) return;
+    final texte = ObservationTextNormalizer.normalize(rawTexte) ?? rawTexte;
     setState(() {
       _observationsLibresCoffret.add(ObservationLibre(
         texte: texte,

@@ -6,6 +6,7 @@ import 'package:inspec_app/models/audit_installations_electriques.dart';
 import 'package:inspec_app/components/normative_search_suggestions_widget.dart';
 import 'package:inspec_app/pages/missions/mission_detail/mission_execution_screen/audit_installations_screen/sous_pages/components/ajouter_coffret_screen.dart';
 import 'package:inspec_app/components/safe_file_image.dart';
+import 'package:inspec_app/utils/observation_text_normalizer.dart';
 
 class ObservationEnrichieWidget extends StatefulWidget {
   final ElementControle element;
@@ -201,10 +202,11 @@ class _ObservationEnrichieWidgetState extends State<ObservationEnrichieWidget> {
           ),
           child: TextFormField(
             initialValue: widget.element.observation,
+            textCapitalization: TextCapitalization.sentences,
             style: TextStyle(fontSize: context.fontSizeS),
             onChanged: (value) {
               setState(() {
-                widget.element.observation = value;
+                widget.element.observation = ObservationTextNormalizer.normalize(value);
               });
               widget.onChanged();
             },

@@ -2,6 +2,7 @@
 import 'package:hive/hive.dart';
 import '../core/utils/source_status_resolver.dart';
 import '../services/dispositions_constructives_registry.dart';
+import '../utils/observation_text_normalizer.dart';
 
 part 'audit_installations_electriques.g.dart';
 
@@ -572,6 +573,9 @@ class Cellule {
   @HiveField(28)
   int? conducteursNeutre;
 
+  @HiveField(29)
+  String? celluleDepart;
+
   Cellule({
     required this.fonction,
     required this.type,
@@ -586,6 +590,7 @@ class Cellule {
     List<String>? photos,
     this.gamme,
     this.calibreDisjoncteur,
+    this.celluleDepart,
     this.sectionCables,
     this.natureReseau,
     List<ElementControle>? observations,
@@ -686,6 +691,7 @@ class Cellule {
     List<String>? photos,
     String? gamme,
     String? calibreDisjoncteur,
+    String? celluleDepart,
     String? sectionCables,
     String? natureReseau,
     List<ElementControle>? observations,
@@ -715,6 +721,7 @@ class Cellule {
       photos: photos ?? this.photos,
       gamme: gamme ?? this.gamme,
       calibreDisjoncteur: calibreDisjoncteur ?? this.calibreDisjoncteur,
+      celluleDepart: celluleDepart ?? this.celluleDepart,
       sectionCables: sectionCables ?? this.sectionCables,
       natureReseau: natureReseau ?? this.natureReseau,
       observations: observations ?? this.observations,
@@ -835,6 +842,9 @@ class TransformateurMTBT {
   @HiveField(31)
   int? conducteursNeutre;
 
+  @HiveField(32)
+  String? courantReglageDisjoncteur;
+
   /// Indique si le transformateur est de type immergé (tolérant aux majuscules/accents)
   bool get isImmerge {
     final t = typeTransformateur.trim().toUpperCase();
@@ -854,6 +864,7 @@ class TransformateurMTBT {
     List<ElementControle>? elementsVerifies,
     List<String>? photos,
     this.calibreDisjoncteur,
+    this.courantReglageDisjoncteur,
     this.sectionCables,
     List<ElementControle>? observations,
     String? syncId,
@@ -953,6 +964,7 @@ class TransformateurMTBT {
     List<ElementControle>? elementsVerifies,
     List<String>? photos,
     String? calibreDisjoncteur,
+    String? courantReglageDisjoncteur,
     String? sectionCables,
     List<ElementControle>? observations,
     String? syncId,
@@ -985,6 +997,7 @@ class TransformateurMTBT {
       elementsVerifies: elementsVerifies ?? this.elementsVerifies,
       photos: photos ?? this.photos,
       calibreDisjoncteur: calibreDisjoncteur ?? this.calibreDisjoncteur,
+      courantReglageDisjoncteur: courantReglageDisjoncteur ?? this.courantReglageDisjoncteur,
       sectionCables: sectionCables ?? this.sectionCables,
       observations: observations ?? this.observations,
       syncId: syncId ?? this.syncId,
@@ -1674,7 +1687,7 @@ class ObservationLibre {
 
   // Méthode pour mettre à jour le texte
   void updateTexte(String nouveauTexte) {
-    texte = nouveauTexte;
+    texte = ObservationTextNormalizer.normalize(nouveauTexte) ?? nouveauTexte;
     dateModification = DateTime.now();
   }
 }
