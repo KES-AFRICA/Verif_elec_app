@@ -81,7 +81,7 @@ class DescriptionInstallationsSequenceScreenState
         'Intensité nominale',
         'Calibre Du Disjoncteur Sortie Transformateur',
         'Section Du Cable',
-        'Tension',
+        'Tension primaire / secondaire',
         'Couplage',
         'Type de réseau',
         'PCC amont',

@@ -894,7 +894,7 @@ class PdfReportStyles {
       'INTENSITE NOMINALE (A)',
       'CALIBRE DU DISJONCTEUR SORTIE TRANSFORMATEUR (A)',
       'SECTION DU CÂBLE (mm²)',
-      'TENSION MT/BT (KV/V)',
+      'TENSION PRIMAIRE/SECONDAIRE',
       'COUPLAGE',
       'REGIME DE NEUTRE',
       'PCC AMONT (MVA)',

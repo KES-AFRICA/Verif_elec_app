@@ -1733,7 +1733,13 @@ class _AddEditItemScreenState extends State<_AddEditItemScreen> {
       }
       return false;
     } else {
-      if (champ == 'Puissance Transformateur' || champ == 'Tension' || champ == 'Observations') {
+      if (champ == 'Puissance Transformateur' ||
+          champ == 'Tension' ||
+          champ == 'Tension primaire / secondaire' ||
+          champ == 'Tension primaire/secondaire' ||
+          champ == 'TENSION PRIMAIRE/SECONDAIRE' ||
+          champ == 'TENSION MT/BT' ||
+          champ == 'Observations') {
         return true;
       }
       return false;

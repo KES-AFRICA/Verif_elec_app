@@ -713,16 +713,19 @@ class PdfAuditInstallationsBuilder {
     Map<String, int>? photoRegistry,
     String? missionId,
   }) {
-    String prefix = '';
+    String ipIkText = 'Non classée';
     if (missionId != null && missionId.trim().isNotEmpty) {
       final parsed = IpIkEvaluatorService.resolveZoneIpIk(missionId, nom);
       if (parsed.hasIpOrIk) {
-        prefix = '[ ${parsed.toString()} ] ';
-      } else {
-        prefix = '[ Non classée ] ';
+        if (parsed.ip != null && parsed.ik != null) {
+          ipIkText = '${parsed.ip}/${parsed.ik}';
+        } else if (parsed.ip != null) {
+          ipIkText = parsed.ip!;
+        } else if (parsed.ik != null) {
+          ipIkText = parsed.ik!;
+        }
       }
     }
-    final titleText = '$prefix${nom.toUpperCase()}';
 
     final widgets = <pw.Widget>[
       pw.SizedBox(height: 8),
@@ -733,13 +736,29 @@ class PdfAuditInstallationsBuilder {
           width: double.infinity,
           color: PdfReportStyles.accentColor,
           padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-          child: pw.Text(
-            titleText,
-            style: pw.TextStyle(
-              font: fontBold,
-              fontSize: PdfReportStyles.fsH3,
-              color: PdfColors.white,
-            ),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Text(
+                ipIkText,
+                style: pw.TextStyle(
+                  font: fontBold,
+                  fontSize: PdfReportStyles.fsH3,
+                  color: PdfColors.white,
+                ),
+              ),
+              pw.SizedBox(width: 12),
+              pw.Expanded(
+                child: pw.Text(
+                  nom.toUpperCase(),
+                  style: pw.TextStyle(
+                    font: fontBold,
+                    fontSize: PdfReportStyles.fsH3,
+                    color: PdfColors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1858,7 +1877,7 @@ class PdfAuditInstallationsBuilder {
         if (cellule.celluleDepart != null && cellule.celluleDepart!.trim().isNotEmpty)
           tableDataRowInfo(
             'Cellule départ',
-            safe(cellule.celluleDepart),
+            safe(cellule.celluleDepart!),
             alt: false,
           ),
         tableDataRowInfo('Type de cellule', safe(cellule.type), alt: false),

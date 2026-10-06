@@ -80,6 +80,8 @@ class InstallationDescriptionSyncService {
     normalizeKey('SECTION DU CABLE(mm2)'): InstallationFieldsRegistry.keySectionCableBT,
     normalizeKey('Section cable'): InstallationFieldsRegistry.keySectionCableBT,
     normalizeKey('Section des cables'): InstallationFieldsRegistry.keySectionCableBT,
+    normalizeKey('Tension'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
+    normalizeKey('TENSION'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
     normalizeKey(InstallationFieldsRegistry.keyTensionPrimaireSecondaire): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
     normalizeKey('TENSION MT/BT'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
     normalizeKey('TENSION MT/BT(KV)'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
@@ -87,6 +89,11 @@ class InstallationDescriptionSyncService {
     normalizeKey('TENSION MT/BT(KV/V)'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
     normalizeKey('Tension primaire / secondaire'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
     normalizeKey('Tension primaire/secondaire'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
+    normalizeKey('TENSION PRIMAIRE / SECONDAIRE'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
+    normalizeKey('TENSION PRIMAIRE/SECONDAIRE'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
+    normalizeKey('TENSION PRIMAIRE / SECONDAIRE (KV/V)'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
+    normalizeKey('TENSION PRIMAIRE/SECONDAIRE (KV/V)'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
+    normalizeKey('TENSION PRIMAIRE/SECONDAIRE(KV/V)'): InstallationFieldsRegistry.keyTensionPrimaireSecondaire,
     normalizeKey(InstallationFieldsRegistry.keyCouplage): InstallationFieldsRegistry.keyCouplage,
     normalizeKey('COUPLAGE'): InstallationFieldsRegistry.keyCouplage,
     normalizeKey(InstallationFieldsRegistry.keyTypeReseau): InstallationFieldsRegistry.keyTypeReseau,
@@ -784,9 +791,15 @@ class InstallationDescriptionSyncService {
       String valSection = transfo.effectiveSectionCablePhase ??
           transfo.sectionCables ??
           getFieldWithAlias(existingData, 'SECTION DU CABLE', _transfoAliases);
-      String valTension = transfo.tensionPrimaireSecondaire.isNotEmpty
-          ? transfo.tensionPrimaireSecondaire
-          : getFieldWithAlias(existingData, 'TENSION MT/BT', _transfoAliases);
+      String valTension = transfo.tensionPrimaireSecondaire.trim().isNotEmpty
+          ? transfo.tensionPrimaireSecondaire.trim()
+          : getFieldWithAlias(existingData, 'Tension primaire / secondaire', _transfoAliases);
+      if (valTension.isEmpty) {
+        valTension = getFieldWithAlias(existingData, 'Tension', _transfoAliases);
+      }
+      if (valTension.isEmpty) {
+        valTension = getFieldWithAlias(existingData, 'TENSION MT/BT', _transfoAliases);
+      }
       String valCouplage = transfo.couplage ??
           getFieldWithAlias(existingData, 'COUPLAGE', _transfoAliases);
       String valTypeReseau = transfo.typeReseau ??
@@ -818,7 +831,12 @@ class InstallationDescriptionSyncService {
       updateField('Section Du Cable', valSection);
       updateField('SECTION DU CABLE', valSection);
       updateField('Tension', valTension);
+      updateField('Tension primaire / secondaire', valTension);
+      updateField('Tension primaire/secondaire', valTension);
+      updateField('TENSION PRIMAIRE/SECONDAIRE', valTension);
+      updateField('TENSION PRIMAIRE / SECONDAIRE', valTension);
       updateField('TENSION MT/BT', valTension);
+      updateField('TENSION MT/BT (KV/V)', valTension);
       updateField('Couplage', valCouplage);
       updateField('COUPLAGE', valCouplage);
       updateField('Type de réseau', valTypeReseau);

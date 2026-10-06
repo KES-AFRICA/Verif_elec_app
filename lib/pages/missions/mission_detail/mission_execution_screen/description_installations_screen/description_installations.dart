@@ -154,7 +154,7 @@ class _DescriptionInstallationsScreenState extends ConsumerState<DescriptionInst
               'Caractéristiques de l\'alimentation basse tension sortie transformateur',
               Icons.bolt_outlined,
               'alimentation_basse_tension',
-              ['PUISSANCE TRANSFORMATEUR (KVA)', 'TYPE DE TRANSFORMATEUR', 'INTENSITE NOMINALE', 'CALIBRE DU DISJONCTEUR SORTIE TRANSFORMATEUR', 'SECTION DU CABLE', 'TENSION MT/BT', 'COUPLAGE', 'PCC AMONT EN MVA', 'UCC EN %', 'IK3 MAX(KA)', 'OBSERVATIONS'],
+              ['PUISSANCE TRANSFORMATEUR (KVA)', 'TYPE DE TRANSFORMATEUR', 'INTENSITE NOMINALE', 'CALIBRE DU DISJONCTEUR SORTIE TRANSFORMATEUR', 'SECTION DU CABLE', 'TENSION PRIMAIRE/SECONDAIRE', 'COUPLAGE', 'PCC AMONT EN MVA', 'UCC EN %', 'IK3 MAX(KA)', 'OBSERVATIONS'],
             ),
             
             _buildListTile(

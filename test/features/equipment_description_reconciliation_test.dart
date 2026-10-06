@@ -86,6 +86,9 @@ void main() {
 
     expect(desc.alimentationBasseTension.first.data['auditTransformateurId'], equals('transfo_001'));
     expect(desc.alimentationBasseTension.first.data['Puissance Transformateur'], equals('630'));
+    expect(desc.alimentationBasseTension.first.data['Tension primaire / secondaire'], equals('20kV/400V'));
+    expect(desc.alimentationBasseTension.first.data['Tension primaire/secondaire'], equals('20kV/400V'));
+    expect(desc.alimentationBasseTension.first.data['TENSION PRIMAIRE/SECONDAIRE'], equals('20kV/400V'));
 
     // 3. Idempotence test: Running sync again creates 0 duplicates
     await InstallationDescriptionSyncService.syncAuditToDescription(audit);
@@ -97,12 +100,14 @@ void main() {
     cellule1.gamme = 'Premset';
     cellule1.tensionService = '30';
     transfo1.puissanceAssignee = '1000';
+    transfo1.tensionPrimaireSecondaire = '15kV/400V';
 
     await InstallationDescriptionSyncService.syncAuditToDescription(audit);
     final descAfterUpdate = descBox.get(missionId);
     expect(descAfterUpdate!.alimentationMoyenneTension.first.data['Gamme De Cellule'], equals('Premset'));
     expect(descAfterUpdate.alimentationMoyenneTension.first.data['Tension de service'], equals('30'));
     expect(descAfterUpdate.alimentationBasseTension.first.data['Puissance Transformateur'], equals('1000'));
+    expect(descAfterUpdate.alimentationBasseTension.first.data['TENSION PRIMAIRE/SECONDAIRE'], equals('15kV/400V'));
 
     // 5. Deletion test: Remove Cellule from local
     local1.cellules.clear();
