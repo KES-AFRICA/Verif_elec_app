@@ -18,10 +18,10 @@ class LuminaireQuestionAnswerAdapter
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return LuminaireQuestionAnswer(
-      questionIndex: fields[0] as int,
+      questionIndex: fields[0] == null ? 1 : fields[0] as int,
       isConform: fields[1] == null ? true : fields[1] as bool,
       commentaire: fields[2] as String?,
-      photoPaths: (fields[3] as List?)?.cast<String>(),
+      photoPaths: (fields[3] as List?)?.cast<String>() ?? [],
     );
   }
 
@@ -62,9 +62,9 @@ class NonConformingLuminaireAdapter
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return NonConformingLuminaire(
-      id: fields[0] as String,
+      id: fields[0] == null ? '' : fields[0] as String,
       repereLocalisation: fields[1] as String?,
-      answers: (fields[2] as List?)?.cast<LuminaireQuestionAnswer>(),
+      answers: (fields[2] as List?)?.cast<LuminaireQuestionAnswer>() ?? [],
       createdAt: fields[3] as DateTime?,
     );
   }
@@ -105,14 +105,14 @@ class LightingInspectionAdapter extends TypeAdapter<LightingInspection> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return LightingInspection(
-      id: fields[0] as String,
-      missionId: fields[1] as String,
-      batimentLocal: fields[2] as String,
-      typeLuminaire: fields[3] as String,
-      dateVerification: fields[4] as DateTime,
-      nbLuminairesConformes: fields[5] as int,
+      id: fields[0] == null ? '' : fields[0] as String,
+      missionId: fields[1] == null ? '' : fields[1] as String,
+      batimentLocal: fields[2] == null ? '' : fields[2] as String,
+      typeLuminaire: fields[3] == null ? '' : fields[3] as String,
+      dateVerification: fields[4] == null ? DateTime.now() : fields[4] as DateTime,
+      nbLuminairesConformes: fields[5] == null ? 0 : fields[5] as int,
       nonConformingLuminaires:
-          (fields[6] as List?)?.cast<NonConformingLuminaire>(),
+          (fields[6] as List?)?.cast<NonConformingLuminaire>() ?? [],
       createdAt: fields[7] as DateTime?,
       updatedAt: fields[8] as DateTime?,
     );

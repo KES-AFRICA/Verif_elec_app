@@ -463,6 +463,15 @@ Moteur dédié [PdfQ18ReportService](file:///c:/Users/TeufackAndelson/OneDrive%2
 6. **Verrouillage de fichier sous Windows lors des builds Android (`mergeReleaseNativeLibs`)** :
    - *Cause* : Processus Gradle ou antivirus maintenant un handle ouvert sur des bibliothèques natives `.so`.
    - *Règle* : Toujours stopper les démons Gradle (`gradlew --stop`) avant les builds de packaging lourd.
+7. **Perte et effacement silencieux lors de l'import/export de sous-modules (Luminaires)** :
+   - *Cause* : Lors d'un import sans écrasement avec conflit de mission, `_remapMissionId` conservait les `item.id` de base, provoquant leur rejet silencieux par `box.containsKey()`. De plus, l'import avec écrasement purgeait la boîte locale même si l'archive importée ne contenait pas de luminaires.
+   - *Règle* : Toujours réattribuer un nouvel ID unique lors du remapping de sous-modules stockés par ID primaire, et ne purger lors d'un import écrasé QUE si la collection importée est explicitement présente et non-vide.
+8. **Disparition de photos prises sur le terrain (Cache OS temporaire)** :
+   - *Cause* : Stockage direct du chemin renvoyé par l'appareil photo/galerie sans copie locale vers `audit_photos/`. Lors d'un nettoyage de cache Android/iOS ou d'un export `.inspec`, les photos disparaissaient.
+   - *Règle* : Toute photo capturée doit être immédiatement copiée de façon synchrone dans `audit_photos/<module>/` avant d'être référencée dans le modèle.
+9. **Normalisation centralisée des observations à la persistance** :
+   - *Cause* : Les normalisations uniquement branchées sur les `TextEditingController` ou l'UI laissaient passer des textes non normalisés lors des flux directs ou des imports.
+   - *Règle* : `ObservationTextNormalizer` doit être exécuté au niveau de la couche Data (`HiveService.save*` et `BackupService._import*`), avec garantie d'idempotence et préservation stricte des grandeurs physiques et références normatives.
 
 ---
 

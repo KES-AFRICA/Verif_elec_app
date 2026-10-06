@@ -40,6 +40,7 @@ import 'hive_service.dart';
 import 'installation_description_sync_service.dart';
 import 'sequence_progress_service.dart';
 import 'intervenants_service.dart';
+import '../utils/observation_text_normalizer.dart';
 import 'package:inspec_app/services/backup/backup_format_strategy.dart';
 import 'package:inspec_app/services/backup/operation_progress_state.dart';
 import 'package:inspec_app/features/backup/data/datasources/backup_queue_service.dart';
@@ -2389,11 +2390,16 @@ class BackupService {
 
     void remapIdInList(String key) {
       if (copy.containsKey(key) && copy[key] is List) {
-        final list = (copy[key] as List).map((item) {
+        final list = (copy[key] as List).asMap().entries.map((entry) {
+          final idx = entry.key;
+          final item = entry.value;
           if (item is Map) {
             final itemMap = Map<String, dynamic>.from(item);
             if (itemMap.containsKey('missionId')) {
               itemMap['missionId'] = newId;
+            }
+            if (key == 'lighting_inspections' && itemMap.containsKey('id')) {
+              itemMap['id'] = 'insp_l_${DateTime.now().microsecondsSinceEpoch}_${idx}_$newId';
             }
             return itemMap;
           }
@@ -2510,10 +2516,13 @@ class BackupService {
           await tBox.delete(k);
         }
 
-        final lBox = Hive.box<LightingInspection>('lighting_inspections');
-        final lKeys = lBox.values.where((l) => l.missionId == targetMissionId).map((l) => l.id).toList();
-        for (final k in lKeys) {
-          await lBox.delete(k);
+        final incomingLighting = _safeList(targetData['lighting_inspections']);
+        if (incomingLighting.isNotEmpty) {
+          final lBox = Hive.box<LightingInspection>('lighting_inspections');
+          final lKeys = lBox.values.where((l) => l.missionId == targetMissionId).map((l) => l.id).toList();
+          for (final k in lKeys) {
+            await lBox.delete(k);
+          }
         }
       }
 
@@ -3428,9 +3437,32 @@ class BackupService {
   // ── Inspection d'éclairage ──
   static Future<void> _importLightingInspection(Map<String, dynamic> d, {bool ecraser = false}) async {
     try {
-      final item = LightingInspection.fromJson(d);
+      final rawItem = LightingInspection.fromJson(d);
+      final item = ObservationTextNormalizer.normalizeLightingInspection(rawItem);
       final box = Hive.box<LightingInspection>('lighting_inspections');
-      if (box.containsKey(item.id) && !ecraser) return;
+
+      if (box.containsKey(item.id) && !ecraser) {
+        final existing = box.get(item.id);
+        // Si l'élément existant appartient à une autre mission, c'est une collision d'ID inter-missions :
+        // réattribuer un nouvel ID pour préserver les données de la nouvelle mission sans écraser l'ancienne
+        if (existing != null && existing.missionId != item.missionId) {
+          final newId = 'insp_l_${DateTime.now().microsecondsSinceEpoch}_${box.length}';
+          final remapped = LightingInspection(
+            id: newId,
+            missionId: item.missionId,
+            batimentLocal: item.batimentLocal,
+            typeLuminaire: item.typeLuminaire,
+            dateVerification: item.dateVerification,
+            nbLuminairesConformes: item.nbLuminairesConformes,
+            nonConformingLuminaires: item.nonConformingLuminaires,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+          );
+          await box.put(newId, remapped);
+          return;
+        }
+        return;
+      }
       await box.put(item.id, item);
     } catch (e) {
       if (kDebugMode) print('⚠️ LightingInspection import: $e');

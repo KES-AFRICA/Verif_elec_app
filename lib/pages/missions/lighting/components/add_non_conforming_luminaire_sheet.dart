@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:inspec_app/services/gallery_photo_service.dart';
 import 'package:inspec_app/constants/app_theme.dart';
 import 'package:inspec_app/models/lighting_inspection.dart';
+import 'package:inspec_app/utils/observation_text_normalizer.dart';
 
 class AddNonConformingLuminaireSheet extends StatefulWidget {
   final NonConformingLuminaire? initialLuminaire;
@@ -598,7 +600,7 @@ class _AddNonConformingLuminaireSheetState
     );
   }
 
-  /// Prise / Sélection de photo
+  /// Prise / Sélection de photo avec persistance pérenne dans audit_photos
   Future<void> _pickPhoto(
     LuminaireQuestionAnswer answer,
     ImageSource source,
@@ -611,8 +613,27 @@ class _AddNonConformingLuminaireSheetState
       if (source == ImageSource.camera) {
         await GalleryPhotoService.saveToGallery(File(photo.path));
       }
+
+      // Persistance physique pérenne dans le répertoire applicatif audit_photos
+      String permanentPath = photo.path;
+      try {
+        final appDir = await getApplicationDocumentsDirectory();
+        final photosDir = Directory('${appDir.path}/audit_photos/luminaires');
+        if (!photosDir.existsSync()) {
+          photosDir.createSync(recursive: true);
+        }
+        final ext = photo.path.split('.').last;
+        final newFileName = 'lum_${DateTime.now().microsecondsSinceEpoch}.$ext';
+        final targetFile = File('${photosDir.path}/$newFileName');
+        await File(photo.path).copy(targetFile.path);
+        permanentPath = targetFile.path;
+      } catch (e) {
+        // Fallback sur le chemin initial en cas d'erreur I/O
+        permanentPath = photo.path;
+      }
+
       setState(() {
-        answer.photoPaths.add(photo.path);
+        answer.photoPaths.add(permanentPath);
       });
     }
   }
@@ -620,7 +641,9 @@ class _AddNonConformingLuminaireSheetState
   /// Validation et fermeture
   void _saveAndClose() {
     for (int i = 0; i < 12; i++) {
-      _answers[i].commentaire = _commentControllers[i].text.trim();
+      final text = _commentControllers[i].text.trim();
+      _answers[i].commentaire =
+          ObservationTextNormalizer.normalize(text) ?? text;
     }
 
     final newId = 'lum_${DateTime.now().microsecondsSinceEpoch}';

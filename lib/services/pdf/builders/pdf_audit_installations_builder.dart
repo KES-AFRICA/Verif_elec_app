@@ -739,15 +739,6 @@ class PdfAuditInstallationsBuilder {
           child: pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
-              pw.Text(
-                ipIkText,
-                style: pw.TextStyle(
-                  font: fontBold,
-                  fontSize: PdfReportStyles.fsH3,
-                  color: PdfColors.white,
-                ),
-              ),
-              pw.SizedBox(width: 12),
               pw.Expanded(
                 child: pw.Text(
                   nom.toUpperCase(),
@@ -756,6 +747,15 @@ class PdfAuditInstallationsBuilder {
                     fontSize: PdfReportStyles.fsH3,
                     color: PdfColors.white,
                   ),
+                ),
+              ),
+              pw.SizedBox(width: 12),
+              pw.Text(
+                ipIkText,
+                style: pw.TextStyle(
+                  font: fontBold,
+                  fontSize: PdfReportStyles.fsH3,
+                  color: PdfColors.white,
                 ),
               ),
             ],

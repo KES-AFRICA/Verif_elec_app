@@ -6,6 +6,7 @@ import 'package:inspec_app/pages/missions/lighting/lighting_inspection_form_scre
 import 'package:inspec_app/services/hive_service.dart';
 import 'package:intl/intl.dart';
 
+import 'package:inspec_app/services/trash_service.dart';
 import 'package:inspec_app/pages/missions/lighting/lighting_summary_screen.dart';
 
 class LightingMissionDetailScreen extends StatefulWidget {
@@ -601,9 +602,9 @@ class _LightingMissionDetailScreenState
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Supprimer l\'inspection ?'),
+        title: const Text('Déplacer dans la corbeille ?'),
         content: Text(
-            'Voulez-vous vraiment supprimer l\'inspection éclairage du local "${inspection.batimentLocal}" ?'),
+            'Voulez-vous déplacer l\'inspection éclairage du local "${inspection.batimentLocal}" dans la corbeille ?\n\nVous pourrez la restaurer ultérieurement depuis la corbeille.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -612,11 +613,20 @@ class _LightingMissionDetailScreenState
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
+              final result = await TrashService.moveLightingInspectionToTrash(inspection);
               await HiveService.deleteLightingInspection(inspection.id);
               _loadInspections();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(result.message ?? 'Inspection déplacée dans la corbeille.'),
+                    backgroundColor: result.success ? Colors.orange : Colors.red,
+                  ),
+                );
+              }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800),
+            child: const Text('Déplacer dans la corbeille'),
           ),
         ],
       ),

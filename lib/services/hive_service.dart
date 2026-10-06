@@ -125,6 +125,13 @@ class HiveService {
 
     // Auto-purge automatique des éléments corbeille de +90 jours
     await TrashService.autoPurgeExpiredItems(retentionDays: 90);
+
+    // Migration historique idempotente des observations
+    try {
+      await ObservationTextNormalizer.runMigrationOrDryRun(applyChanges: true);
+    } catch (e) {
+      if (kDebugMode) print('⚠️ Migration normalisation observations: $e');
+    }
   }
 
   // ============================================================
@@ -887,6 +894,7 @@ static Future<bool> resetAllDocuments(String missionId) async {
   /// Sauvegarder les données de description des installations
   static Future<void> saveDescriptionInstallations(DescriptionInstallations desc) async {
     try {
+      ObservationTextNormalizer.normalizeDescriptionInstallations(desc);
       final box = await Hive.openBox<DescriptionInstallations>(_descriptionBox);
       desc.updatedAt = DateTime.now();
       await box.put(desc.missionId, desc);
@@ -1545,6 +1553,7 @@ static Future<AuditInstallationsElectriques> getOrCreateAuditInstallations(Strin
     bool skipDescriptionSync = false,
   }) async {
     return PersistenceQueue.enqueue('audit_${audit.missionId}', () async {
+      ObservationTextNormalizer.normalizeAuditInstallations(audit);
       final box = Hive.box<AuditInstallationsElectriques>(_auditBox);
       audit.updatedAt = DateTime.now();
       _auditCache[audit.missionId] = audit;
@@ -4972,9 +4981,10 @@ static Future<Foudre> createFoudreObservation({
     final box = Hive.box<Foudre>(_foudreBox);
     
     // Créer la nouvelle observation
+    final normalizedObs = ObservationTextNormalizer.normalize(observation) ?? observation;
     final foudre = Foudre.create(
       missionId: missionId,
-      observation: observation,
+      observation: normalizedObs,
       niveauPriorite: niveauPriorite,
     );
     
@@ -5067,7 +5077,8 @@ static Future<bool> updateFoudreObservation({
     }
     
     // Mettre à jour les propriétés
-    foudre.observation = observation;
+    foudre.observation =
+        ObservationTextNormalizer.normalize(observation) ?? observation;
     foudre.niveauPriorite = niveauPriorite;
     foudre.updatedAt = DateTime.now();
     
@@ -5591,6 +5602,7 @@ static Future<MesuresEssais> getOrCreateMesuresEssais(String missionId) async {
 
 /// Sauvegarder les données de mesures et essais
 static Future<void> saveMesuresEssais(MesuresEssais mesures) async {
+  ObservationTextNormalizer.normalizeMesuresEssais(mesures);
   final box = Hive.box<MesuresEssais>(_mesuresEssaisBox);
   mesures.updatedAt = DateTime.now();
   if (mesures.isInBox) {
@@ -8052,6 +8064,7 @@ static Future<JSA> getOrCreateJSA(String missionId) async {
 }
 
 static Future<void> saveJSA(JSA jsa) async {
+  ObservationTextNormalizer.normalizeJSA(jsa);
   final box = Hive.box<JSA>(_jsaBox);
   jsa.updatedAt = DateTime.now();
   if (jsa.isInBox) {
@@ -9501,6 +9514,7 @@ static String? findCoffretDoublon({
   /// Sauvegarde ou met à jour une inspection d'éclairage
   static Future<void> saveLightingInspection(
       LightingInspection inspection) async {
+    ObservationTextNormalizer.normalizeLightingInspection(inspection);
     inspection.updatedAt = DateTime.now();
     await _lightingBox.put(inspection.id, inspection);
   }
