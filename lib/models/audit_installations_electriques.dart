@@ -647,6 +647,12 @@ class Cellule {
     return null;
   }
 
+  /// Nombre effectif de câbles / conducteurs phase sous forme de texte
+  String? get effectiveNombreCables {
+    if (conducteursPhase != null && conducteursPhase! > 0) return conducteursPhase.toString();
+    return null;
+  }
+
   /// Nombre effectif de conducteurs neutre (1 par défaut si section présente, null sinon)
   int? get effectiveConducteursNeutre {
     if (conducteursNeutre != null && conducteursNeutre! > 0) return conducteursNeutre;
@@ -922,6 +928,12 @@ class TransformateurMTBT {
     if (conducteursPhase != null && conducteursPhase! > 0) return conducteursPhase;
     final sec = effectiveSectionCablePhase;
     if (sec != null && sec.trim().isNotEmpty && sec.trim() != '-') return 1;
+    return null;
+  }
+
+  /// Nombre effectif de câbles / conducteurs phase sous forme de texte
+  String? get effectiveNombreCables {
+    if (conducteursPhase != null && conducteursPhase! > 0) return conducteursPhase.toString();
     return null;
   }
 
@@ -1444,7 +1456,18 @@ class Alimentation {
   /// Nombre effectif de conducteurs phase (1 par défaut si section présente, null sinon)
   int? get effectiveConducteursPhase {
     if (conducteursPhase != null && conducteursPhase! > 0) return conducteursPhase;
+    if (nombreCables != null && nombreCables!.trim().isNotEmpty) {
+      final parsed = int.tryParse(nombreCables!.trim());
+      if (parsed != null && parsed > 0) return parsed;
+    }
     if (sectionCable.trim().isNotEmpty && sectionCable.trim() != '-') return 1;
+    return null;
+  }
+
+  /// Nombre effectif de câbles / conducteurs phase sous forme de texte
+  String? get effectiveNombreCables {
+    if (nombreCables != null && nombreCables!.trim().isNotEmpty) return nombreCables!.trim();
+    if (conducteursPhase != null && conducteursPhase! > 0) return conducteursPhase.toString();
     return null;
   }
 
@@ -1751,10 +1774,21 @@ class DepartEquipement {
   /// Getter rétrocompatible pour la section neutre (avec fallback auto sur sectionCable Phase si absent)
   String get effectiveSectionCableNeutre => (sectionCableNeutre != null && sectionCableNeutre!.trim().isNotEmpty) ? sectionCableNeutre! : sectionCable;
 
-  /// Nombre effectif de conducteurs phase (1 par défaut si section présente, null sinon)
+  /// Nombre effectif de conducteurs phase (priorité à conducteursPhase, fallback sur nombreCables, sinon 1 si section présente)
   int? get effectiveConducteursPhase {
     if (conducteursPhase != null && conducteursPhase! > 0) return conducteursPhase;
+    if (nombreCables != null && nombreCables!.trim().isNotEmpty) {
+      final parsed = int.tryParse(nombreCables!.trim());
+      if (parsed != null && parsed > 0) return parsed;
+    }
     if (sectionCable.trim().isNotEmpty && sectionCable.trim() != '-') return 1;
+    return null;
+  }
+
+  /// Nombre effectif de câbles / conducteurs phase sous forme de texte
+  String? get effectiveNombreCables {
+    if (nombreCables != null && nombreCables!.trim().isNotEmpty) return nombreCables!.trim();
+    if (conducteursPhase != null && conducteursPhase! > 0) return conducteursPhase.toString();
     return null;
   }
 
@@ -1906,10 +1940,21 @@ class CircuitTerminalEquipement {
   /// Getter rétrocompatible pour la section neutre (avec fallback auto sur sectionCable Phase si absent)
   String get effectiveSectionCableNeutre => (sectionCableNeutre != null && sectionCableNeutre!.trim().isNotEmpty) ? sectionCableNeutre! : sectionCable;
 
-  /// Nombre effectif de conducteurs phase (1 par défaut si section présente, null sinon)
+  /// Nombre effectif de conducteurs phase (priorité à conducteursPhase, fallback sur nombreCables, sinon 1 si section présente)
   int? get effectiveConducteursPhase {
     if (conducteursPhase != null && conducteursPhase! > 0) return conducteursPhase;
+    if (nombreCables != null && nombreCables!.trim().isNotEmpty) {
+      final parsed = int.tryParse(nombreCables!.trim());
+      if (parsed != null && parsed > 0) return parsed;
+    }
     if (sectionCable.trim().isNotEmpty && sectionCable.trim() != '-') return 1;
+    return null;
+  }
+
+  /// Nombre effectif de câbles / conducteurs phase sous forme de texte
+  String? get effectiveNombreCables {
+    if (nombreCables != null && nombreCables!.trim().isNotEmpty) return nombreCables!.trim();
+    if (conducteursPhase != null && conducteursPhase! > 0) return conducteursPhase.toString();
     return null;
   }
 

@@ -3145,6 +3145,7 @@ static Future<bool> addLocalToBasseTensionZone({
             if (current.pdcKA.isEmpty && dep.pdcKA.isNotEmpty) current.pdcKA = dep.pdcKA;
             if (current.sectionCable.isEmpty && dep.sectionCable.isNotEmpty) current.sectionCable = dep.sectionCable;
             if (current.sectionCableNeutre == null && dep.sectionCableNeutre != null) current.sectionCableNeutre = dep.sectionCableNeutre;
+            if ((current.nombreCables == null || current.nombreCables!.isEmpty) && dep.nombreCables != null && dep.nombreCables!.isNotEmpty) current.nombreCables = dep.nombreCables;
             if (current.conducteursPhase == null && dep.conducteursPhase != null) current.conducteursPhase = dep.conducteursPhase;
             if (current.conducteursNeutre == null && dep.conducteursNeutre != null) current.conducteursNeutre = dep.conducteursNeutre;
             if (current.natureCable == null && dep.natureCable != null) current.natureCable = dep.natureCable;
@@ -3184,12 +3185,69 @@ static Future<bool> addLocalToBasseTensionZone({
             if (current.pdcKA.isEmpty && ct.pdcKA.isNotEmpty) current.pdcKA = ct.pdcKA;
             if (current.sectionCable.isEmpty && ct.sectionCable.isNotEmpty) current.sectionCable = ct.sectionCable;
             if (current.sectionCableNeutre == null && ct.sectionCableNeutre != null) current.sectionCableNeutre = ct.sectionCableNeutre;
+            if ((current.nombreCables == null || current.nombreCables!.isEmpty) && ct.nombreCables != null && ct.nombreCables!.isNotEmpty) current.nombreCables = ct.nombreCables;
             if (current.conducteursPhase == null && ct.conducteursPhase != null) current.conducteursPhase = ct.conducteursPhase;
             if (current.conducteursNeutre == null && ct.conducteursNeutre != null) current.conducteursNeutre = ct.conducteursNeutre;
             if (current.natureCable == null && ct.natureCable != null) current.natureCable = ct.natureCable;
           }
         }
         base.terminalCircuits = mergedCircuits;
+
+        // FUSION PROTECTRICE DE LA PROTECTION DE TÊTE
+        if (base.protectionTete == null && donor.protectionTete != null) {
+          base.protectionTete = donor.protectionTete;
+        } else if (base.protectionTete != null && donor.protectionTete != null) {
+          final bPt = base.protectionTete!;
+          final dPt = donor.protectionTete!;
+          if ((bPt.nombreCables == null || bPt.nombreCables!.isEmpty) && dPt.nombreCables != null && dPt.nombreCables!.isNotEmpty) {
+            bPt.nombreCables = dPt.nombreCables;
+          }
+          if (bPt.conducteursPhase == null && dPt.conducteursPhase != null) {
+            bPt.conducteursPhase = dPt.conducteursPhase;
+          }
+          if (bPt.conducteursNeutre == null && dPt.conducteursNeutre != null) {
+            bPt.conducteursNeutre = dPt.conducteursNeutre;
+          }
+          if ((bPt.sectionCableNeutre == null || bPt.sectionCableNeutre!.isEmpty) && dPt.sectionCableNeutre != null && dPt.sectionCableNeutre!.isNotEmpty) {
+            bPt.sectionCableNeutre = dPt.sectionCableNeutre;
+          }
+          if ((bPt.natureCable == null || bPt.natureCable!.isEmpty) && dPt.natureCable != null && dPt.natureCable!.isNotEmpty) {
+            bPt.natureCable = dPt.natureCable;
+          }
+        }
+
+        // FUSION PROTECTRICE DES ALIMENTATIONS
+        if (base.alimentations.isEmpty && donor.alimentations.isNotEmpty) {
+          base.alimentations = List.from(donor.alimentations);
+        } else if (base.alimentations.isNotEmpty && donor.alimentations.isNotEmpty) {
+          for (int i = 0; i < base.alimentations.length; i++) {
+            final bAlim = base.alimentations[i];
+            Alimentation? dAlim;
+            if (i < donor.alimentations.length) {
+              dAlim = donor.alimentations[i];
+            } else {
+              final matches = donor.alimentations.where((a) => a.id == bAlim.id || a.source == bAlim.source);
+              if (matches.isNotEmpty) dAlim = matches.first;
+            }
+            if (dAlim != null) {
+              if ((bAlim.nombreCables == null || bAlim.nombreCables!.isEmpty) && dAlim.nombreCables != null && dAlim.nombreCables!.isNotEmpty) {
+                bAlim.nombreCables = dAlim.nombreCables;
+              }
+              if (bAlim.conducteursPhase == null && dAlim.conducteursPhase != null) {
+                bAlim.conducteursPhase = dAlim.conducteursPhase;
+              }
+              if (bAlim.conducteursNeutre == null && dAlim.conducteursNeutre != null) {
+                bAlim.conducteursNeutre = dAlim.conducteursNeutre;
+              }
+              if ((bAlim.sectionCableNeutre == null || bAlim.sectionCableNeutre!.isEmpty) && dAlim.sectionCableNeutre != null && dAlim.sectionCableNeutre!.isNotEmpty) {
+                bAlim.sectionCableNeutre = dAlim.sectionCableNeutre;
+              }
+              if ((bAlim.natureCable == null || bAlim.natureCable!.isEmpty) && dAlim.natureCable != null && dAlim.natureCable!.isNotEmpty) {
+                bAlim.natureCable = dAlim.natureCable;
+              }
+            }
+          }
+        }
 
         // FUSION DES PHOTOS
         final photoSet = <String>{...base.photos, ...donor.photos};

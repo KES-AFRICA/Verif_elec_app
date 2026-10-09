@@ -2445,14 +2445,14 @@ class _EtapeAlimentationsState extends State<_EtapeAlimentations> {
   void _initControllers() {
     for (int i = 0; i < widget.alimentations.length; i++) {
       final a = widget.alimentations[i];
-      _controllers['alim${i}_nb_cables'] = TextEditingController(text: a.nombreCables ?? '');
+      _controllers['alim${i}_nb_cables'] = TextEditingController(text: a.effectiveNombreCables ?? '');
       _controllers['alim${i}_pdc'] = TextEditingController(text: a.pdcKA);
       _controllers['alim${i}_icc3'] = TextEditingController(text: a.icc3Max ?? '');
       _controllers['alim${i}_calibre'] = TextEditingController(text: a.calibre);
       _controllers['alim${i}_source'] = TextEditingController(text: a.source);
     }
     if (widget.protectionTete != null) {
-      _controllers['prot_nb_cables'] = TextEditingController(text: widget.protectionTete!.nombreCables ?? '');
+      _controllers['prot_nb_cables'] = TextEditingController(text: widget.protectionTete!.effectiveNombreCables ?? '');
       _controllers['prot_pdc'] = TextEditingController(text: widget.protectionTete!.pdcKA);
       _controllers['prot_icc3'] = TextEditingController(text: widget.protectionTete!.icc3Max ?? '');
       _controllers['prot_calibre'] = TextEditingController(text: widget.protectionTete!.calibre);
@@ -2500,7 +2500,14 @@ class _EtapeAlimentationsState extends State<_EtapeAlimentations> {
           if (_controllers.containsKey(key) && _controllers[key]!.text != value) _controllers[key]!.text = value;
           break;
         case 'nombreCables':
-          a.nombreCables = value.trim().isEmpty ? null : value.trim();
+          final trimmed = value.trim();
+          a.nombreCables = trimmed.isEmpty ? null : trimmed;
+          final parsed = int.tryParse(trimmed);
+          if (parsed != null && parsed > 0) {
+            a.conducteursPhase = parsed;
+          } else if (trimmed.isEmpty) {
+            a.conducteursPhase = (a.sectionCable.trim().isNotEmpty && a.sectionCable.trim() != '-') ? 1 : null;
+          }
           final key = isProtectionTete ? 'prot_nb_cables' : 'alim${index}_nb_cables';
           if (_controllers.containsKey(key) && _controllers[key]!.text != value) _controllers[key]!.text = value;
           break;
@@ -2517,6 +2524,13 @@ class _EtapeAlimentationsState extends State<_EtapeAlimentations> {
           break;
         case 'conducteursPhase':
           a.conducteursPhase = int.tryParse(value);
+          if (a.conducteursPhase != null && a.conducteursPhase! > 0) {
+            a.nombreCables = a.conducteursPhase.toString();
+            final keyNb = isProtectionTete ? 'prot_nb_cables' : 'alim${index}_nb_cables';
+            if (_controllers.containsKey(keyNb) && _controllers[keyNb]!.text != a.nombreCables) {
+              _controllers[keyNb]!.text = a.nombreCables!;
+            }
+          }
           final keyCondP = isProtectionTete ? 'prot_cond_phase' : 'alim${index}_cond_phase';
           if (_controllers.containsKey(keyCondP) && _controllers[keyCondP]!.text != value) _controllers[keyCondP]!.text = value;
           break;
@@ -2567,7 +2581,14 @@ class _EtapeAlimentationsState extends State<_EtapeAlimentations> {
           case 'icc3Max': widget.protectionTete!.icc3Max = value; break;
           case 'calibre': widget.protectionTete!.calibre = value; break;
           case 'nombreCables':
-            widget.protectionTete!.nombreCables = value.trim().isEmpty ? null : value.trim();
+            final trimmed = value.trim();
+            widget.protectionTete!.nombreCables = trimmed.isEmpty ? null : trimmed;
+            final parsed = int.tryParse(trimmed);
+            if (parsed != null && parsed > 0) {
+              widget.protectionTete!.conducteursPhase = parsed;
+            } else if (trimmed.isEmpty) {
+              widget.protectionTete!.conducteursPhase = (widget.protectionTete!.sectionCable.trim().isNotEmpty && widget.protectionTete!.sectionCable.trim() != '-') ? 1 : null;
+            }
             final key = 'prot_nb_cables';
             if (_controllers.containsKey(key) && _controllers[key]!.text != value) _controllers[key]!.text = value;
             break;
@@ -2584,6 +2605,13 @@ class _EtapeAlimentationsState extends State<_EtapeAlimentations> {
             break;
           case 'conducteursPhase':
             widget.protectionTete!.conducteursPhase = int.tryParse(value);
+            if (widget.protectionTete!.conducteursPhase != null && widget.protectionTete!.conducteursPhase! > 0) {
+              widget.protectionTete!.nombreCables = widget.protectionTete!.conducteursPhase.toString();
+              const keyNb = 'prot_nb_cables';
+              if (_controllers.containsKey(keyNb) && _controllers[keyNb]!.text != widget.protectionTete!.nombreCables) {
+                _controllers[keyNb]!.text = widget.protectionTete!.nombreCables!;
+              }
+            }
             const keyCondP = 'prot_cond_phase';
             if (_controllers.containsKey(keyCondP) && _controllers[keyCondP]!.text != value) _controllers[keyCondP]!.text = value;
             break;
@@ -2752,7 +2780,7 @@ class _EtapeAlimentationsState extends State<_EtapeAlimentations> {
         ? true
         : isDepartPrisAvecProtectionFromType(a.typeProtection);
 
-    final nbCablesCtrl = _getController(isProtectionTete ? 'prot_nb_cables' : 'alim${index}_nb_cables', a.nombreCables ?? '');
+    final nbCablesCtrl = _getController(isProtectionTete ? 'prot_nb_cables' : 'alim${index}_nb_cables', a.effectiveNombreCables ?? '');
     final sourceCtrl = _getController(isProtectionTete ? 'prot_source' : 'alim${index}_source', a.source);
     final pdcCtrl = _getController(isProtectionTete ? 'prot_pdc' : 'alim${index}_pdc', a.pdcKA);
     final icc3Ctrl = _getController(isProtectionTete ? 'prot_icc3' : 'alim${index}_icc3', a.icc3Max ?? '');
@@ -2883,7 +2911,7 @@ class _EtapeAlimentationsState extends State<_EtapeAlimentations> {
                   onChanged('source', result.displayName);
                   if (result.isDepart && result.depart != null) {
                     final dep = result.depart!;
-                    onChanged('nombreCables', dep.nombreCables ?? '');
+                    onChanged('nombreCables', dep.effectiveNombreCables ?? '');
                     onChanged('typeProtection', dep.typeProtection);
                     onChanged('marqueDisjoncteur', dep.marque);
                     onChanged('courbe', dep.courbe);
@@ -7543,7 +7571,8 @@ class _EtapeDepartsEtCircuitsState extends State<_EtapeDepartsEtCircuits> {
                   const SizedBox(height: 12),
 
                   TextFormField(
-                    initialValue: dep.nombreCables ?? '',
+                    key: ValueKey('dep_${dep.id}_nb_cables_${dep.effectiveNombreCables}'),
+                    initialValue: dep.effectiveNombreCables ?? '',
                     decoration: const InputDecoration(
                       labelText: 'Nombre de câble',
                       hintText: 'Ex: 1, 2, 3...',
@@ -7552,7 +7581,17 @@ class _EtapeDepartsEtCircuitsState extends State<_EtapeDepartsEtCircuits> {
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (v) { dep.nombreCables = v.trim().isEmpty ? null : v.trim(); widget.onDataChanged(); },
+                    onChanged: (v) {
+                      final trimmed = v.trim();
+                      dep.nombreCables = trimmed.isEmpty ? null : trimmed;
+                      final parsed = int.tryParse(trimmed);
+                      if (parsed != null && parsed > 0) {
+                        dep.conducteursPhase = parsed;
+                      } else if (trimmed.isEmpty) {
+                        dep.conducteursPhase = (dep.sectionCable.trim().isNotEmpty && dep.sectionCable.trim() != '-') ? 1 : null;
+                      }
+                      widget.onDataChanged();
+                    },
                   ),
                   if (isEligible) ...[
                     const SizedBox(height: 16),
@@ -8050,7 +8089,8 @@ class _EtapeDepartsEtCircuitsState extends State<_EtapeDepartsEtCircuits> {
                   const SizedBox(height: 12),
 
                   TextFormField(
-                    initialValue: ct.nombreCables ?? '',
+                    key: ValueKey('ct_${ct.id}_nb_cables_${ct.effectiveNombreCables}'),
+                    initialValue: ct.effectiveNombreCables ?? '',
                     decoration: const InputDecoration(
                       labelText: 'Nombre de câble',
                       hintText: 'Ex: 1, 2, 3...',
@@ -8059,7 +8099,17 @@ class _EtapeDepartsEtCircuitsState extends State<_EtapeDepartsEtCircuits> {
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (v) { ct.nombreCables = v.trim().isEmpty ? null : v.trim(); widget.onDataChanged(); },
+                    onChanged: (v) {
+                      final trimmed = v.trim();
+                      ct.nombreCables = trimmed.isEmpty ? null : trimmed;
+                      final parsed = int.tryParse(trimmed);
+                      if (parsed != null && parsed > 0) {
+                        ct.conducteursPhase = parsed;
+                      } else if (trimmed.isEmpty) {
+                        ct.conducteursPhase = (ct.sectionCable.trim().isNotEmpty && ct.sectionCable.trim() != '-') ? 1 : null;
+                      }
+                      widget.onDataChanged();
+                    },
                   ),
                   if (isEligible) ...[
                     const SizedBox(height: 16),

@@ -2849,12 +2849,10 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
       sectionCables: _celluleSectionCablePhase ?? _celluleSectionCables,
       sectionCablePhase: _celluleSectionCablePhase,
       sectionCableNeutre: _celluleSectionCableNeutre,
-      conducteursPhase: (_celluleSectionCablePhase != null && _celluleSectionCablePhase!.isNotEmpty && _celluleSectionCablePhase != '-')
-          ? int.tryParse(_celluleConducteursPhaseController.text.trim())
-          : null,
-      conducteursNeutre: (_celluleSectionCableNeutre != null && _celluleSectionCableNeutre!.isNotEmpty && _celluleSectionCableNeutre != '-')
-          ? int.tryParse(_celluleConducteursNeutreController.text.trim())
-          : null,
+      conducteursPhase: int.tryParse(_celluleConducteursPhaseController.text.trim()) ??
+          ((_celluleSectionCablePhase != null && _celluleSectionCablePhase!.isNotEmpty && _celluleSectionCablePhase != '-') ? 1 : null),
+      conducteursNeutre: int.tryParse(_celluleConducteursNeutreController.text.trim()) ??
+          ((_celluleSectionCableNeutre != null && _celluleSectionCableNeutre!.isNotEmpty && _celluleSectionCableNeutre != '-') ? 1 : null),
       natureReseau: _celluleNatureReseau,
       presenceIacm: _cellulePresenceIacm,
       tensionService: _celluleTensionService,
@@ -3038,12 +3036,10 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
       sectionCables: _transfoSectionCablePhase ?? _transfoSectionCables,
       sectionCablePhase: _transfoSectionCablePhase,
       sectionCableNeutre: _transfoSectionCableNeutre,
-      conducteursPhase: (_transfoSectionCablePhase != null && _transfoSectionCablePhase!.isNotEmpty && _transfoSectionCablePhase != '-')
-          ? int.tryParse(_transfoConducteursPhaseController.text.trim())
-          : null,
-      conducteursNeutre: (_transfoSectionCableNeutre != null && _transfoSectionCableNeutre!.isNotEmpty && _transfoSectionCableNeutre != '-')
-          ? int.tryParse(_transfoConducteursNeutreController.text.trim())
-          : null,
+      conducteursPhase: int.tryParse(_transfoConducteursPhaseController.text.trim()) ??
+          ((_transfoSectionCablePhase != null && _transfoSectionCablePhase!.isNotEmpty && _transfoSectionCablePhase != '-') ? 1 : null),
+      conducteursNeutre: int.tryParse(_transfoConducteursNeutreController.text.trim()) ??
+          ((_transfoSectionCableNeutre != null && _transfoSectionCableNeutre!.isNotEmpty && _transfoSectionCableNeutre != '-') ? 1 : null),
       observations: _transfoObservations,
       syncId: finalSyncId,
       intensiteNominale: _transfoIntensiteNominaleController.text.trim(),
@@ -3820,24 +3816,21 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
                   if (_celluleConducteursPhaseController.text.trim().isEmpty) {
                     _celluleConducteursPhaseController.text = '1';
                   }
-                } else {
-                  _celluleConducteursPhaseController.text = '';
                 }
               });
             },
             optional: true,
           ),
-          if (_celluleSectionCablePhase != null && _celluleSectionCablePhase!.isNotEmpty && _celluleSectionCablePhase != '-') ...[
-            SizedBox(height: isSmallScreen ? 12 : 16),
-            _buildTextField(
-              _celluleConducteursPhaseController,
-              'Nombre de conducteurs phase',
-              isSmallScreen,
-              optional: false,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-          ],
+          SizedBox(height: isSmallScreen ? 12 : 16),
+          _buildTextField(
+            _celluleConducteursPhaseController,
+            'Nombre de câble (conducteurs phase)',
+            isSmallScreen,
+            optional: true,
+            //hintText: 'Ex: 1, 2, 3...',
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
           SizedBox(height: isSmallScreen ? 12 : 16),
           _buildDropdownVal(
             _celluleNatureReseau,
@@ -4655,24 +4648,21 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
                       _transfoConducteursNeutreController.text = '1';
                     }
                   }
-                } else {
-                  _transfoConducteursPhaseController.text = '';
                 }
               });
             },
             optional: true,
           ),
-          if (_transfoSectionCablePhase != null && _transfoSectionCablePhase!.isNotEmpty && _transfoSectionCablePhase != '-') ...[
-            SizedBox(height: isSmallScreen ? 12 : 16),
-            _buildTextField(
-              _transfoConducteursPhaseController,
-              'Nombre de conducteurs phase',
-              isSmallScreen,
-              optional: false,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-          ],
+          SizedBox(height: isSmallScreen ? 12 : 16),
+          _buildTextField(
+            _transfoConducteursPhaseController,
+            'Nombre de câble (conducteurs phase)',
+            isSmallScreen,
+            optional: true,
+            //hintText: 'Ex: 1, 2, 3...',
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
           SizedBox(height: isSmallScreen ? 12 : 16),
           _buildDropdownVal(
             _transfoSectionCableNeutre,
@@ -4687,27 +4677,24 @@ class _EtapeCelluleTransformateurMultiState extends State<_EtapeCelluleTransform
                   if (_transfoConducteursNeutreController.text.trim().isEmpty) {
                     _transfoConducteursNeutreController.text = '1';
                   }
-                } else {
-                  _transfoConducteursNeutreController.text = '';
                 }
               });
             },
             optional: true,
           ),
-          if (_transfoSectionCableNeutre != null && _transfoSectionCableNeutre!.isNotEmpty && _transfoSectionCableNeutre != '-') ...[
-            SizedBox(height: isSmallScreen ? 12 : 16),
-            _buildTextField(
-              _transfoConducteursNeutreController,
-              'Nombre de conducteurs neutre',
-              isSmallScreen,
-              optional: false,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (_) {
-                _transfoNeutreManuallyModified = true;
-              },
-            ),
-          ],
+          SizedBox(height: isSmallScreen ? 12 : 16),
+          _buildTextField(
+            _transfoConducteursNeutreController,
+            'Nombre de câble (conducteurs neutre)',
+            isSmallScreen,
+            optional: true,
+            //hintText: 'Ex: 1, 2, 3...',
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (_) {
+              _transfoNeutreManuallyModified = true;
+            },
+          ),
           SizedBox(height: isSmallScreen ? 16 : 20),
 
           // Photo du transformateur
