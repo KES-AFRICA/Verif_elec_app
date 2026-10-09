@@ -279,9 +279,74 @@ class _QrScanCoffretScreenState extends State<QrScanCoffretScreen> {
     );
 
     if (confirm == true) {
-      // Ouvrir AjouterCoffretScreen en mode édition avec les données existantes
-      // mais pour le NOUVEL emplacement (parentType/parentIndex actuels)
       if (!mounted) return;
+      // Cloner l'équipement pour le nouvel emplacement :
+      // - Nouvel ID technique unique
+      // - QR code scanné
+      // - Photos purgées (externes, internes, points) pour éliminer toute contamination inter-zones
+      final clonedForNewLocation = CoffretArmoire(
+        id: 'equip_${DateTime.now().microsecondsSinceEpoch}',
+        qrCode: _scannedQrCode ?? '',
+        nom: existing.nom,
+        type: existing.type,
+        accessible: existing.accessible,
+        departPrisAvecProtection: existing.departPrisAvecProtection,
+        repere: existing.repere,
+        domaineTension: existing.domaineTension,
+        alimenteeParTransformateur: existing.alimenteeParTransformateur,
+        transformateurId: existing.transformateurId,
+        transformateurNomComplet: existing.transformateurNomComplet,
+        presenceCPI: existing.presenceCPI,
+        zoneAtex: existing.zoneAtex,
+        indiceIpIk: existing.indiceIpIk,
+        indiceIpIkRepere: existing.indiceIpIkRepere,
+        sourceEquipementId: existing.sourceEquipementId,
+        sourceNomComplet: existing.sourceNomComplet,
+        sourceDepartId: existing.sourceDepartId,
+        alimentations: List.from(existing.alimentations),
+        protectionTete: existing.protectionTete,
+        departures: List.from(existing.effectiveDepartures.map((d) => d.copyWith(id: 'dep_${DateTime.now().microsecondsSinceEpoch}_${d.identification}'))),
+        terminalCircuits: List.from(existing.effectiveTerminalCircuits.map((c) => c.copyWith(id: 'ct_${DateTime.now().microsecondsSinceEpoch}_${c.identification}'))),
+        pointsVerification: List.from(existing.pointsVerification.map((pv) => PointVerification(
+          pointVerification: pv.pointVerification,
+          conformite: pv.conformite,
+          observation: pv.observation,
+          referenceNormative: pv.referenceNormative,
+          priorite: pv.priorite,
+          photos: [],
+          observations: pv.observations != null
+              ? List.from(pv.observations!.map((e) => ElementControle(
+                    elementControle: e.elementControle,
+                    conforme: e.conforme,
+                    observation: e.observation,
+                    priorite: e.priorite,
+                    photos: [],
+                    referenceNormative: e.referenceNormative,
+                    estNA: e.estNA,
+                  )))
+              : null,
+        ))),
+        photos: [],
+        photosExternes: [],
+        photosInternes: [],
+        observationsLibres: List.from(existing.observationsLibres.map((o) => ObservationLibre(
+          texte: o.texte,
+          photos: [],
+          pointVerificationKey: o.pointVerificationKey,
+          referenceNormative: o.referenceNormative,
+          familleRisque: o.familleRisque,
+          criticite: o.criticite,
+        ))),
+        observationsParafoudreEnrichies: List.from((existing.observationsParafoudreEnrichies ?? []).map((o) => ElementControle(
+          elementControle: o.elementControle,
+          conforme: o.conforme,
+          observation: o.observation,
+          priorite: o.priorite,
+          photos: [],
+        ))),
+        statut: 'incomplet',
+      );
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -293,10 +358,9 @@ class _QrScanCoffretScreenState extends State<QrScanCoffretScreen> {
             zoneIndex: widget.zoneIndex,
             isInZone: widget.isInZone,
             qrCode: _scannedQrCode,
-            // Passer le coffret existant comme données de départ
-            // isEdition=false car c'est un nouvel emplacement
-            coffret: existing,
+            coffret: clonedForNewLocation,
             coffretIndex: null,
+            isCloning: true,
           ),
         ),
       ).then((value) {

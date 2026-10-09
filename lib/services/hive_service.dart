@@ -2275,10 +2275,20 @@ static CoffretArmoire? findCoffretByQrCode(String missionId, String qrCode) {
             index = list.indexWhere((c) => c.qrCode.trim() == updatedCoffret.qrCode.trim());
           }
           if (index == -1 && oldNom != null && oldNom.trim().isNotEmpty) {
-            index = list.indexWhere((c) => c.nom.trim() == oldNom.trim());
+            index = list.indexWhere((c) {
+              if (c.nom.trim() != oldNom.trim()) return false;
+              if (c.equipmentId.isNotEmpty && c.equipmentId != equipmentId) return false;
+              if (c.id != null && c.id!.isNotEmpty && c.id != equipmentId && c.id != updatedCoffret.id) return false;
+              return true;
+            });
           }
           if (index == -1 && updatedCoffret.nom.trim().isNotEmpty) {
-            index = list.indexWhere((c) => c.nom.trim() == updatedCoffret.nom.trim());
+            index = list.indexWhere((c) {
+              if (c.nom.trim() != updatedCoffret.nom.trim()) return false;
+              if (c.equipmentId.isNotEmpty && c.equipmentId != equipmentId) return false;
+              if (c.id != null && c.id!.isNotEmpty && c.id != equipmentId && c.id != updatedCoffret.id) return false;
+              return true;
+            });
           }
 
           if (index != -1) {
@@ -3055,13 +3065,28 @@ static Future<bool> addLocalToBasseTensionZone({
       final explicitId = coffret.id?.trim();
       
       final matchIdx = result.indexWhere((existing) {
+        final extQr = existing.qrCode.trim();
+        // VETO PRIORITAIRE : Deux équipements avec des QR codes réels physiques distincts
+        // sont par définition deux équipements distincts et ne doivent JAMAIS fusionner.
+        if (normQr.isNotEmpty && !normQr.startsWith('TEMP_') && !normQr.startsWith('DRAFT_') &&
+            extQr.isNotEmpty && !extQr.startsWith('TEMP_') && !extQr.startsWith('DRAFT_') &&
+            extQr != normQr) {
+          return false;
+        }
+
         if (explicitId != null && explicitId.isNotEmpty && existing.id != null && existing.id!.trim() == explicitId) {
           return true;
         }
         if (existing.equipmentId == eqId) {
+          // Si les deux équipements possèdent des IDs explicites distincts
+          if (explicitId != null && explicitId.isNotEmpty &&
+              existing.id != null && existing.id!.trim().isNotEmpty &&
+              explicitId != existing.id!.trim()) {
+            return false;
+          }
           return true;
         }
-        if (normQr.isNotEmpty && !normQr.startsWith('TEMP_') && !normQr.startsWith('DRAFT_') && existing.qrCode.trim() == normQr) {
+        if (normQr.isNotEmpty && !normQr.startsWith('TEMP_') && !normQr.startsWith('DRAFT_') && extQr == normQr) {
           return true;
         }
         return false;

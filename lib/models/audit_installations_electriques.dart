@@ -1255,9 +1255,9 @@ class CoffretArmoire {
             ? id
             : (createdAt != null)
                 ? 'equip_${createdAt.millisecondsSinceEpoch}_${nom.trim().hashCode.abs()}'
-                : (qrCode.trim().isNotEmpty && !qrCode.startsWith('TEMP_') && !qrCode.startsWith('DRAFT_'))
+                : (qrCode.trim().isNotEmpty)
                     ? 'equip_${qrCode.trim()}'
-                    : 'equip_${(nom.trim() + (numeroEquipement ?? '')).hashCode.abs()}',
+                    : 'equip_${DateTime.now().microsecondsSinceEpoch}_${(nom.trim() + (numeroEquipement ?? '')).hashCode.abs()}',
         _accessible = accessible ?? true,
         departures = departures,
         terminalCircuits = terminalCircuits ?? [],

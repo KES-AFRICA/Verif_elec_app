@@ -3816,6 +3816,7 @@ class _EtapePointsVerificationState extends State<_EtapePointsVerification> {
   }
 
   void _addObservationToPoint(PointVerification point) {
+    final pointIndex = _getPointIndex(point);
     setState(() {
       point.observations ??= [];
       point.observations!.add(ElementControle(
@@ -3824,13 +3825,22 @@ class _EtapePointsVerificationState extends State<_EtapePointsVerification> {
         priorite: point.conformite == 'non' ? 3 : null,
         observation: '',
       ));
+      if (pointIndex >= 0) {
+        widget.hasObservation[pointIndex] = true;
+      }
     });
     _syncPointObservations(point);
   }
 
   void _deleteObservationFromPoint(PointVerification point, int obsIndex) {
+    final pointIndex = _getPointIndex(point);
     setState(() {
       point.observations?.removeAt(obsIndex);
+      if (point.observations == null || point.observations!.isEmpty) {
+        if (pointIndex >= 0) {
+          widget.hasObservation[pointIndex] = false;
+        }
+      }
     });
     _syncPointObservations(point);
   }
@@ -3846,7 +3856,10 @@ class _EtapePointsVerificationState extends State<_EtapePointsVerification> {
       point.photos = [];
     }
     final parentState = context.findAncestorStateOfType<_AjouterCoffretScreenState>();
-    parentState?._saveDraft();
+    if (parentState != null) {
+      parentState._hasUnsavedChanges = true;
+      parentState._scheduleAutoSave();
+    }
   }
 
   Widget _buildModernPointCard(BuildContext context, PointVerification point, int pointIndex) {
@@ -3970,6 +3983,7 @@ class _EtapePointsVerificationState extends State<_EtapePointsVerification> {
                           ),
                           const SizedBox(height: 12),
                           ObservationEnrichieWidget(
+                            key: ValueKey('obs_${pointIndex}_${obsIndex}_${element.elementControle}_${element.hashCode}'),
                             element: element,
                             onChanged: () {
                               setState(() {});
@@ -4215,6 +4229,8 @@ class AjouterCoffretScreen extends ConsumerStatefulWidget {
   final bool isInZone;
   final String? qrCode;
 
+  final bool isCloning;
+
   const AjouterCoffretScreen({
     super.key,
     required this.mission,
@@ -4226,9 +4242,10 @@ class AjouterCoffretScreen extends ConsumerStatefulWidget {
     this.coffretIndex,
     this.isInZone = false,
     this.qrCode,
+    this.isCloning = false,
   });
 
-  bool get isEdition => coffret != null;
+  bool get isEdition => coffret != null && !isCloning;
 
   @override
   ConsumerState<AjouterCoffretScreen> createState() => _AjouterCoffretScreenState();
@@ -4331,8 +4348,9 @@ class _AjouterCoffretScreenState extends ConsumerState<AjouterCoffretScreen> {
   @override
   void initState() {
     super.initState();
-    _draftEquipmentId = widget.coffret?.equipmentId ??
-        'equip_${DateTime.now().microsecondsSinceEpoch}';
+    _draftEquipmentId = (widget.isCloning || widget.coffret == null)
+        ? 'equip_${DateTime.now().microsecondsSinceEpoch}'
+        : widget.coffret!.equipmentId;
     _etapePointsKey = GlobalKey<_EtapePointsVerificationState>();
     _etapeAlimentationsKey = GlobalKey<_EtapeAlimentationsState>();
     _etapeDepartsCircuitsKey = GlobalKey<_EtapeDepartsEtCircuitsState>();
@@ -4350,6 +4368,9 @@ class _AjouterCoffretScreenState extends ConsumerState<AjouterCoffretScreen> {
     }
     if (widget.isEdition) {
       _chargerDonneesExistantes();
+    } else if (widget.isCloning && widget.coffret != null) {
+      _chargerDonneesExistantes();
+      _autoFillNumeroEquipement();
     } else {
       _initializeAlimentations();
       _autoFillNumeroEquipement();
@@ -5259,7 +5280,9 @@ class _AjouterCoffretScreenState extends ConsumerState<AjouterCoffretScreen> {
       _hasObservation[index] = value;
       if (!value) {
         point.observation = null;
-        // Conserver point.observations pour éviter la destruction accidentelle d'observations historiques
+        point.priorite = null;
+        point.photos = [];
+        point.observations = [];
       } else {
         point.observations ??= [];
         if (point.observations!.isEmpty) {
@@ -5272,6 +5295,7 @@ class _AjouterCoffretScreenState extends ConsumerState<AjouterCoffretScreen> {
         }
       }
     });
+    _hasUnsavedChanges = true;
     _scheduleAutoSave();
   }
 

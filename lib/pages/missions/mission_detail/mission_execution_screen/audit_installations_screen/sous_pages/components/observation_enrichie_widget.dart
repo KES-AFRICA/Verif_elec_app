@@ -37,6 +37,28 @@ class ObservationEnrichieWidget extends StatefulWidget {
 
 class _ObservationEnrichieWidgetState extends State<ObservationEnrichieWidget> {
   final ImagePicker _picker = ImagePicker();
+  late TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController(text: widget.element.observation ?? '');
+  }
+
+  @override
+  void didUpdateWidget(covariant ObservationEnrichieWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final targetText = widget.element.observation ?? '';
+    if (_textController.text != targetText) {
+      _textController.text = targetText;
+    }
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
 
   Future<void> _prendrePhoto() async {
     final photo = await _picker.pickImage(
@@ -201,12 +223,12 @@ class _ObservationEnrichieWidgetState extends State<ObservationEnrichieWidget> {
             ),
           ),
           child: TextFormField(
-            initialValue: widget.element.observation,
+            controller: _textController,
             textCapitalization: TextCapitalization.sentences,
             style: TextStyle(fontSize: context.fontSizeS),
             onChanged: (value) {
               setState(() {
-                widget.element.observation = ObservationTextNormalizer.normalize(value);
+                widget.element.observation = value.trim().isEmpty ? '' : value;
               });
               widget.onChanged();
             },
@@ -271,6 +293,7 @@ class _ObservationEnrichieWidgetState extends State<ObservationEnrichieWidget> {
                     onTap: () {
                       setState(() {
                         widget.element.observation = s;
+                        _textController.text = s;
                       });
                       widget.onChanged();
                     },
